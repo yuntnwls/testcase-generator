@@ -1,108 +1,209 @@
-# [SIMVA 자동화 솔루션 상세 설계서]
+# [테스트 스크립트 자동화 솔루션 상세 설계서]
 
-## 1. 시스템 아키텍처 설계
+## 1. 시스템 아키텍처 설계 (Extensible Architecture)
 
 ### 1.1. 전체 구성도
 ```mermaid
 graph TD
     subgraph Input_Layer [입력 계층]
         TC_File[TC 정의서 (Excel/TSV)]
-        Signal_CFG[Signal.cfg (CSV)]
+        Signal_CFG[Signal Source (File/Code)]
     end
 
-    subgraph Parsing_Layer [분석 및 파싱 계층]
-        TC_Parser[TC 파서 (Macro & Regex)]
-        Signal_Loader[시그널 로더 (Index & Vector DB)]
-        TC_File --> TC_Parser
-        Signal_CFG --> Signal_Loader
-    end
-
-    subgraph Logic_Layer [변환 및 생성 계층]
-        Mapper[매핑 엔진 (Fuzzy/RAG Matcher)]
-        Prompt_Engine[프롬프트 엔진 (Context 구성)]
-        LLM[LLM (OpenAI GPT)]
+    subgraph Core_Engine [Core Engine (Target-Agnostic)]
+        TC_Parser[TC Parser (Regex)]
+        IR_Builder[IR Builder (Abstract Model)]
+        Signal_Registry[Signal Registry (Abstract Index)]
+        Mapper[Mapper & Prompt Engine]
         
-        TC_Parser --> Mapper
-        Signal_Loader --> Mapper
-        Mapper -- "매핑된 시그널 정보" --> Prompt_Engine
-        TC_Parser -- "Action Step 정보" --> Prompt_Engine
-        Prompt_Engine --> LLM
+        TC_File --> TC_Parser
+        TC_Parser -- "Raw Data" --> IR_Builder
+        Signal_CFG --> Signal_Registry
+        Signal_Registry --> Mapper
+        IR_Builder -- "Intermediate Representation (JSON)" --> Mapper
+    end
+
+    subgraph Adapter_Layer [Adapter Layer (Target-Specific)]
+        LLM[LLM (Code Logic Generation)]
+        Simva_Adapter[SIMVA Adapter (Python)]
+        Other_Adapter[Other Tool Adapter (Future)]
+        
+        Mapper --> LLM
+        LLM -- "Abstract Logic / Pseudo Code" --> Simva_Adapter
+        LLM -.-> Other_Adapter
     end
 
     subgraph Output_Layer [출력 계층]
-        Code_Gen[코드 생성기]
-        Validator[정적 검증기 (Syntax Check)]
-        Final_Script[Python Test Script (.py)]
+        Final_Script[Target Script (.py / .cs / ...)]
+        Validator[Syntax Validator]
         
-        LLM --> Code_Gen
-        Code_Gen --> Validator
+        Simva_Adapter --> Validator
         Validator --> Final_Script
     end
 ```
 
 ## 2. 모듈별 상세 설계 및 구현 계획
 
-### 2.1. Signal Loader (Code Registry 구축) - **핵심 변경**
-- **기존 설계**: `Signal.cfg`만 참조 -> **변경 설계**: `signals.py`를 **Source of Truth**로 사용.
-- **책임**: Python 프로젝트 내 `signals.py`를 로드하여 사용 가능한 모든 시그널 경로(`signals.BDC.SignalName`)를 인덱싱.
-- **구현 상세**:
-    - **Method**: `load_signal_definitions()`
-    - **Logic**:
-        1. `signals.py`를 `import`하거나 `ast`로 파싱.
-        2. `signals` 모듈 하위의 클래스(Profile)와 속성(Signal)을 순회.
-        3. **Mapping Dictionary** 생성:
-            - Key: `Signal Name` (예: `NM_State_BDC_FD_BCAN1`)
-            - Value: `Full Path` (예: `signals.BDC.NM_State_BDC_FD_BCAN1`)
-            - Metadata: `Signal.cfg`에서 로드한 데이터 타입 정보 병합 (Optional).
-    - **Search Strategy**: 
-        - 입력된 TC 변수명과 Mapping Dictionary의 **Key** 간 유사도 검색 수행.
-        - 검색 결과로 **Value (Full Path)**를 반환하여 코드 생성에 즉시 사용 가능하도록 함.
+### 2.1. Signal Loader & Code Registry (Source of Truth)
+- **구현 상세 (Implementation Details)**:
+    - **라이브러리**: `ast` (Python 표준 라이브러리)
+    - **핵심 로직 (AST Parsing)**:
+      ```python
+      import ast
 
-### 2.2. TC Parser (엑셀 파서)
-- **책임**: 비정형 텍스트(`#1. (Set = 1)`)를 구조화된 데이터로 변환.
-- **구현 상세**:
-    - **Class**: `TCParser`
-    - **Logic**:
-        - 정규식 `re.compile(r"(\d+)\.\s*\(([^=]+)\s*=\s*([^)]+)\)")` 활용.
-        - `Step` 객체 리스트 생성: `[{'step': 1, 'action': 'VehicleSpeed', 'value': '0x5'}, ...]`
+      def parse_signals(file_path):
+          with open(file_path, "r", encoding="utf-8") as f:
+              tree = ast.parse(f.read())
+          
+          registry = {}
+          # ClassDef(Profile) -> Assign(Signal) 탐색
+          for node in ast.walk(tree):
+              if isinstance(node, ast.ClassDef):
+                  profile_name = node.name
+                  for submapping in node.body:
+                      if isinstance(submapping, ast.Assign):
+                          # signals.BDC.SignalName 구조 추출
+                          signal_name = submapping.targets[0].id
+                          full_path = f"signals.{profile_name}.{signal_name}"
+                          registry[signal_name] = full_path
+          return registry
+      ```
+    - **설계 의도**: `import`하여 실행하는 것보다 `ast`로 파싱하는 것이 안전하며(Side-effect 없음), 정적 분석의 핵심 기초 기술입니다.
 
-### 2.3. Mapper & Prompt Engine (핵심 로직)
-- **책임**: 파싱된 데이터와 시그널 DB를 결합하여 LLM 프롬프트 생성.
-- **Prompt Template 전략**:
-    - **Role Definition**: "SIMVA 스크립트 변환 전문가"
-    - **Signal Dictionary Injection**:
+### 2.2. TC Parser & IR Builder (중간 표현 생성)
+- **설계 의도**: 자연어 TC를 특정 언어에 종속되지 않는 **중립적 구조체(Intermediate Representation)**로 변환.
+- **IR 데이터 구조 (JSON Schema)**:
+  ```json
+  [
+    {
+      "step_id": 1,
+      "type": "ACTION", // or "CHECK", "CONTROL"
+      "keyword": "HeadLamp",
+      "value": "ON",
+      "condition": {
+        "operator": "==", 
+        "target": "ON"
+      },
+      "meta": {
+        "original_text": "1. (HeadLamp = On)"
+      }
+    }
+  ]
+  ```
+- **구현 상세**:
+    - **Parsing**: 정규식으로 텍스트 추출.
+    - **Normalization**: "Wait(500)" -> `{"type": "WAIT", "value": 0.5, "unit": "sec"}` 로 표준화.
+    - **Builder**: 파싱된 데이터를 위 JSON 스키마에 맞춰 객체화(`pydantic` 모델 활용 권장).
+
+### 2.3. Mapper & Prompt Engine (Target-Aware RAG)
+- **설계 의도**: IR과 매핑된 시그널 정보를 바탕으로, **선택된 타겟 언어(Target Language)**에 최적화된 프롬프트를 생성.
+- **Dynamic Prompting Strategy**:
+    - **Abstract Context**: 타겟과 무관한 시그널 정보 및 이전 매핑 이력 주입.
         ```text
-        [Relevant Signals]
-        - Query: "VehicleSpeed" -> Found: "VehicleSpeed_Info_BDC" (uint16)
-        - Query: "Lamp_Puddle" -> Found: "PuddleLamp_Status" (bool)
+        [Signal Context]
+        - "VehicleSpeed" maps to "signals.BDC.Can_Veh_Spd" (Type: uint16)
         ```
-    - **Rule Injection**:
+    - **Target-Specific Rule Injection**: 어댑터로부터 해당 언어의 문법 규칙을 받아 프롬프트에 추가.
         ```text
-        [Rules]
-        1. Convert 'Set X = Y' to 'simva.set_signal(signals.BDC.X, Y)'
-        2. Convert 'Wait(T)' to 'simva.wait(T/1000.0)'
+        [Generation Rules for SIMVA]
+        1. Use 'simva.set_signal(KEY, VAL)' for actions.
+        2. Use 'simva.keep_eq(KEY, VAL, TIME)' for checks.
         ```
-
-### 2.4. Code Generator & Validator
-- **책임**: LLM 응답 수신 및 유효성 검증.
 - **구현 상세**:
-    - **Validation Logic**:
-        - Python `ast` 모듈을 사용하여 Syntax Error 검사.
-        - 생성된 코드 내 `signals.XXX` 경로가 실제 `SignalDatabase`에 존재하는지 Cross-Check.
-    - **Error Handling**: 검증 실패 시 에러 로그와 함께 재생성 요청(Retry) 또는 주석 처리하여 출력.
+    - `PromptBuilder` 클래스가 `TargetAdapter`에게 `get_prompt_rules()`를 호출하여 규칙을 동적으로 구성.
 
-## 3. 데이터 흐름 예시 (Data Flow Walkthrough)
+### 2.4. Multi-Target Adapter & Generator (핵심 확장 포인트)
+- **설계 의도**: 특정 언어(Python/SIMVA)에 종속된 로직을 **어댑터(Adapter)**로 격리하여 확장성 확보.
+- **아키텍처 (Strategy Pattern)**:
+    - **Interface (`ICodeGenerator`)**:
+      ```python
+      class ICodeGenerator(ABC):
+          @abstractmethod
+          def generate_setup(self, ir_data): pass
+          @abstractmethod
+          def generate_action(self, step_ir): pass
+          @abstractmethod
+          def validate(self, code): pass
+      ```
+    - **Implementation 1 (`SimvaGenerator`)**:
+      - `generate_action` -> `simva.set_signal(...)` 생성
+      - `validate` -> `ast.parse` 사용
+    - **Implementation 2 (`CaplGenerator` - Future)**:
+      - `generate_action` -> `setSignal(...)` 생성 (CAPL 문법)
+      - `validate` -> Regex 또는 CAPL 컴파일러 연동
 
-1.  **Input**: TC의 `Test Procedure` 셀에서 `"1. (Lamp_PuddleLamp = On)"` 문자열 읽기.
-2.  **Parsing**: `Action="Lamp_PuddleLamp"`, `Value="On"` 추출.
-3.  **Signal Search**: `"Lamp_PuddleLamp"`로 `Signal.cfg` 검색 -> 가장 유사한 `"BDC_PuddleLamp_Control"` 발견.
-4.  **Prompting**: 
-    - "Set `BDC_PuddleLamp_Control` to `1` (On=1). Use `simva.set_signal`."
-5.  **Generation**: 
-    - `simva.set_signal(signals.BDC.BDC_PuddleLamp_Control, 1)` 코드 생성.
-6.  **Writing**: 결과 `.py` 파일에 함수 본문으로 작성.
+- **Process Isolation Architecture (Stability & Polyglot)**:
+    - **설계 의도**: 외부 플러그인을 독립 프로세스로 실행하여, 메인 애플리케이션의 메모리와 실행 흐름을 완벽하게 보호.
+    - **구현 상세 (`subprocess` 활용)**:
+      ```python
+      import subprocess
+      import json
 
-## 4. 향후 확장성
-- **RAG 고도화**: 단순 문자열 유사도를 넘어, 시그널 설명(`Description`)까지 포함한 벡터 검색 도입 가능.
-- **GUI 연동**: 변환 과정을 시각화하고, 매핑이 불확실한 경우 사용자가 직접 선택하게 하는 UI 툴로 발전 가능.
- pocket.
+      class AdapterRunner:
+          def __init__(self, script_path):
+              self.script_path = script_path
+
+          def run(self, ir_data: dict) -> str:
+              """
+              IR 데이터를 JSON 문자열로 변환하여 서브 프로세스에 전달하고,
+              생성된 코드를 받아옴.
+              """
+              try:
+                  # CLI 실행: python plugin.py
+                  process = subprocess.Popen(
+                      ["python", self.script_path], 
+                      stdin=subprocess.PIPE, 
+                      stdout=subprocess.PIPE, 
+                      stderr=subprocess.PIPE,
+                      text=True
+                  )
+                  
+                  # IR 전달 (Stdin)
+                  stdout, stderr = process.communicate(input=json.dumps(ir_data))
+                  
+                  if process.returncode != 0:
+                      raise RuntimeError(f"Plugin Error: {stderr}")
+                      
+                  return stdout # 생성된 코드
+                  
+              except Exception as e:
+                  logging.error(f"Failed to run adapter {self.script_path}: {e}")
+                  raise
+      ```
+    - **플러그인 작성 표준**:
+      - 모든 플러그인은 `stdin`으로 JSON을 받고, `stdout`으로 코드를 출력하도록 작성되어야 함.
+
+
+- **Code Validator (Safety Layer)**:
+    - 각 구현체(`SimvaGenerator`) 내부에서 해당 언어에 맞는 검증 로직(`validate`)을 수행.
+
+### 2.5. Macro System (User Defined Functions)
+- **설계 의도**: `simva` 라이브러리에 없는 복잡한 시퀀스(예: 초기화, 복합 제어)를 재사용 가능한 Python 함수로 모듈화.
+- **구현 상세 (Implementation Details)**:
+    - **모듈 구조**: `macros.py` 파일에 사용자 정의 함수를 모아두고, 생성된 스크립트에서 이를 import하여 사용.
+    - **Code Example**:
+      ```python
+      # [macros.py]
+      import simva
+      import signals
+
+      def Initial_EngineON():
+          """엔진 시동 시퀀스"""
+          simva.set_signal(signals.BDC.Ignition_Switch, 1) # ACC
+          simva.wait(0.5)
+          simva.set_signal(signals.BDC.Ignition_Switch, 2) # IGN On
+          simva.wait(1.0)
+      
+      # [Generated Script]
+      from macros import Initial_EngineON
+      
+      def test_case_1():
+          Initial_EngineON()  # TC의 "Initial_EngineON" 요청을 함수 호출로 변환
+      ```
+    - **Parser 로직**: TC에서 `Action`이 `signal_registry`에 없고, `macros` 리스트에 존재하면 매크로 함수 호출로 변환.
+
+## 3. 데이터 흐름 및 통합 전략
+- **통합 포인트**: 모든 모듈은 인터페이스 기반으로 설계되어, 향후 특정 모델(GPT-4 -> Claude 3.5 등)을 교체하더라도 전체 워크플로우 영향 최소화.
+- **UI/DB 연동**: 
+    - **GUI**: Streamlit을 통해 사용자에게 변환 과정을 시각적으로 전달 (상세: `ui_proposal.md`).
+    - **DB**: 매핑 결과와 학습 데이터를 영구 저장하여 지속적 고도화 지원 (상세: `db_design.md`).
