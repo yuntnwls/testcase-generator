@@ -11,31 +11,38 @@
 ```text
 testcase-generator/
 ├── config/
-│   └── config.yaml                 # 전체 시스템 통합 설정 파일
+│   └── config.yaml                 # 전체 시스템 통합 설정 파일 (로깅, LLM, DI 등)
 ├── data/                           # 영구 저장 데이터 (git 무시 권장)
 │   ├── vector_db/                  # ChromaDB 로컬 파일 저장소
-│   └── ontology/
-│       └── graph_rules.json        # 선행조건/관계 룰 파일
+│   ├── ontology/
+│   │   └── mock_ontology_db.json   # 선행조건/관계 룰 파일
+│   └── tc_data/                    # 사용자 업로드 또는 샘플 TC 데이터 (mock_tc_data.tsv)
+├── logs/                           # 구조화된 로그 출력 폴더 (.gitignore 처리)
+│   ├── app.log                     # 사람 가독성용 텍스트 로그 (ConsoleRenderer)
+│   └── app.jsonl                   # 기계 및 분석 도구용 순수 JSON JSONL 로그
 ├── src/
 │   ├── core/                       # Core Engine (LLM 및 데이터 흐름 제어)
 │   │   ├── __init__.py
-│   │   ├── parser.py               # 엑셀 TC 파싱 모듈
-│   │   ├── rag_engine.py           # VectorDB & Ontology 연동 모듈
+│   │   ├── engine.py               # 파이프라인 메인 관제 (Trace ID 발급, UI 통신)
+│   │   ├── parser.py               # 엑셀 TC 파싱 및 Validation (Retry Loop 포함)
+│   │   ├── rag_engine.py           # VectorDB & Ontology 하이브리드 검색
 │   │   ├── prompt_builder.py       # 동적 프롬프트 생성기
-│   │   ├── llm_provider.py         # LLM Interface 및 Factory
-│   │   └── models.py               # Pydantic IR 모델 정의 (BaseIR, SetIR 등)
+│   │   ├── llm_provider.py         # LLM Interface 및 Provider 팩토리 (DI 대상)
+│   │   └── models.py               # Pydantic IR 모델 및 에러 정의
 │   ├── adapters/                   # 타겟 언어별 어댑터 프로세스 (독립 실행)
 │   │   ├── __init__.py
-│   │   ├── simva_adapter.py        # SIMVA 타겟 파이썬 생성기
+│   │   ├── base_adapter.py         # BaseAdapter 추상 클래스 (SDK, StdIO 규약)
+│   │   ├── simva_adapter.py        # SIMVA 타겟 생성기
 │   │   └── capl_adapter.py         # (Future) CAPL 타겟 생성기
 │   └── ui/
 │       └── streamlit_app.py        # 메인 웹 서비스 UI 인터페이스
 ├── tests/                          # 단위 테스트 및 통합 테스트
-│   ├── ui_mock/
-│   ├── test_rag.py
-│   └── test_parser.py
+│   ├── integration/                # 외부 의존성(로컬) 연결 E2E 연동 테스트
+│   │   ├── test_pipeline_local_llm.py # Ollama 연결 통합 변환 파이프라인 테스트
+│   │   └── test_rag_actual.py      # 구축된 임베딩(Vector DB) 기반 RAG 실제 검색 테스트
+│   └── test_parser.py              # 파서 정규식 및 Validation 유닛 테스트
 ├── requirements.txt                # 파이썬 패키지 의존성
-└── main.py                         # CLI 진입점 (혹은 ui/streamlit_app.py 직접 실행)
+└── main.py                         # CLI 진입점 및 의존성 주입(DI) 부트스트래퍼
 ```
 
 ### 1.1. 각 레이어별 설계 제약 (Constraints)
@@ -54,51 +61,49 @@ testcase-generator/
 # Universal Test Script Generator - Config
 # ==========================================
 
-# 1. LLM Provider 설정 (로컬 및 클라우드 동적 스위칭)
+# 1. LLM Provider 설정 (의존성 주입 대상)
 llm:
-  # 사용 가능한 타입: "local", "openai", "gemini"
+  # 사용 가능한 타입: "mock", "local", "openai", "gemini"
   type: "local" 
+  max_retries: 3 # LLM Self-Correction (Topic 1) 최대 재시도 횟수
   
-  # Local CPU LLM 설정 (type이 'local'일 때 작동)
+  # Local CPU LLM 설정 (type이 'local'일 때 작동, 비용 절감형 테스트용)
   local:
     endpoint: "http://localhost:11434/api/generate" # Ollama 기본 주소
-    model_name: "llama3:8b" # 또는 사내 파인튜닝 모델
+    model_name: "llama3:8b" 
     timeout_sec: 120
     
-  # OpenAI 설정 (type이 'openai'일 때 작동)
+  # OpenAI / Gemini API 설정 (Production 용)
   openai:
-    api_key: "${OPENAI_API_KEY}" # 환경변수 권장
+    api_key: "${OPENAI_API_KEY}"
     model_name: "gpt-4o"
-    temperature: 0.1
-    
-  # Google Gemini API 설정 (type이 'gemini'일 때 작동)
-  gemini:
-    api_key: "${GEMINI_API_KEY}"
-    model_name: "gemini-1.5-pro"
     temperature: 0.1
 
 # 2. Database (RAG) 설정
 database:
   vector_db_path: "./data/vector_db"
-  ontology_path: "./data/ontology/graph_rules.json"
+  ontology_path: "./data/mock_ontology_db.json"
   similarity_threshold: 0.75 # 이 점수 이하면 UNKNOWN 처리 (정확도 확보)
 
-# 3. Target Adapter 설정
+# 3. Target Adapter 설정 (Subprocess 실행 방식)
 target:
-  # 현재 사용할 어댑터 종류
   active_adapter: "simva" 
-  
   adapters:
     simva:
       executable_path: "./src/adapters/simva_adapter.py"
-      signal_registry_path: "./example_targets/simva_signals.py"
-      macro_registry_path: "./example_targets/simva_macros.py"
+      # Adapter 프로세스 띄울 때 사용할 Python 인터프리터 경로
+      python_bin: "python" 
 
-# 4. UI 및 Logging 설정
+# 4. UI 및 추적성(Traceability) 설정
 system:
   log_level: "INFO" # DEBUG, INFO, WARNING, ERROR
   ui_theme: "light" # light, dark
   enable_progress_bar: true
+  
+  logging:
+    # structlog Dual-Output 설정
+    console_log_enabled: true
+    json_log_path: "./logs/app.jsonl"
 ```
 
 ## 3. 설정 파일 작동 원리 (Dependency Injection)

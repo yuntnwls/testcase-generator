@@ -5,52 +5,52 @@
 ### 1.1. 전체 구성도
 ```mermaid
 graph TD
-    subgraph Input_Layer ["입력 계층"]
-        TC_File["TC 정의서 (Excel/TSV)"]
-        Signal_CFG["Signal Source (File/Code)"]
+    subgraph Input_Layer [입력 계층]
+        TC_File[TC 정의서]
+        Signal_CFG[Signal Source]
     end
 
-    subgraph Core_Engine ["Core Engine (Target-Agnostic)"]
-        TC_Parser["TC Parser (Regex/NLP)"]
-        IR_Builder["IR Builder (Abstract Model)"]
-        Hybrid_RAG["Hybrid RAG Engine"]
-        Vector_DB[("Vector DB")]
-        Ontology[("Knowledge Graph")]
-        Signal_Registry_Core["Signal Registry (Abstract Index)"]
-        Mapper["Mapper & Prompt Engine"]
+    subgraph Core_Engine [Core Engine]
+        TC_Parser[TC Parser]
+        IR_Builder[IR Builder]
+        Hybrid_RAG[Hybrid RAG Engine]
+        Vector_DB[(Vector DB)]
+        Ontology[(Knowledge Graph)]
+        Signal_Registry_Core[Signal Registry]
+        Mapper[Mapper & Prompt Engine]
         
         TC_File --> TC_Parser
-        TC_Parser -- "Raw Data" --> IR_Builder
+        TC_Parser --> IR_Builder
         IR_Builder --> Hybrid_RAG
         Vector_DB --> Hybrid_RAG
         Ontology --> Hybrid_RAG
-        Hybrid_RAG -- "Context-Enriched Data" --> Mapper
+        Hybrid_RAG --> Mapper
         Signal_Registry_Core --> Mapper
     end
     
-    Mapper -- "Intermediate Representation (JSON) (Logical Signal Names)" --> Simva_Adapter
+    Mapper -- Intermediate Representation JSON --> Simva_Adapter
 
-    subgraph Config_Layer ["Configuration Layer"]
-        Target_Specific_Mapping["Target-Specific Mapping DB/Files"]
-        Signal_Registry_Adapter["Signal Registry"]
+    subgraph Config_Layer [Configuration Layer]
+        Target_Specific_Mapping[Target-Specific Mapping DB]
+        Signal_Registry_Adapter[Signal Registry]
         Target_Specific_Mapping -.-> Signal_Registry_Adapter
     end
 
-    subgraph Adapter_Layer ["Adapter Layer (Target-Specific)"]
-        LLM["LLM (Code Logic Generation)"]
-        Simva_Adapter["SIMVA Adapter (Python)"]
-        Other_Adapter["Other Tool Adapter (Future)"]
+    subgraph Adapter_Layer [Adapter Layer]
+        LLM[LLM Code Logic Generation]
+        Simva_Adapter[SIMVA Adapter Python]
+        Other_Adapter[Other Tool Adapter]
         
         Signal_Registry_Adapter --> Simva_Adapter
         Signal_Registry_Adapter --> Other_Adapter
         Mapper --> LLM
-        LLM -- "Abstract Logic / Pseudo Code" --> Simva_Adapter
+        LLM --> Simva_Adapter
         LLM -.-> Other_Adapter
     end
 
-    subgraph Output_Layer ["출력 계층"]
-        Final_Script["Target Script (.py / .cs / ...)"]
-        Validator["Syntax Validator"]
+    subgraph Output_Layer [출력 계층]
+        Final_Script[Target Script]
+        Validator[Syntax Validator]
         
         Simva_Adapter --> Validator
         Validator --> Final_Script
@@ -137,9 +137,14 @@ graph TD
         1. Use 'simva.set_signal(KEY, VAL)' for actions.
         2. Use 'simva.keep_eq(KEY, VAL, TIME)' for checks.
         ```
+- **LLM 자가 수정 루프 (Self-Correction & Retry Mechanism)**:
+    - **목적**: LLM이 반환한 JSON 객체가 `Pydantic` 스키마 검증에 실패(문법 오류, 필수 키 누락, 환각 등)할 경우 즉시 예외를 던지지 않고 스스로 복구할 수 있는 기회를 제공합니다.
+    - **동작 방식**: 예외가 발생하면 예외 메시지(예: `ValidationError: Field 'value' is missing`)를 원본 텍스트 및 이전 LLM 응답과 함께 다시 LLM에게 전달합니다.
+    - **제약 조건**: 무한 루프를 방지하기 위해 최대 3회(`max_retries`)까지만 재시도하며, 모두 실패 시 `UnknownIR` 객체를 생성하여 Fallback 처리합니다.
 - **구현 상세**:
     - `HybridRAGEngine` 클래스가 Vector DB(예: ChromaDB/Milvus) 및 Ontology Database(예: Neo4j 또는 JSON-LD 파일)와 통신.
     - `PromptBuilder` 클래스가 RAG 검색 결과와 타겟 언어 규칙을 결합하여 최종 LLM 프롬프트를 완성.
+    - `IRBuilder` 클래스 내부에 Pydantic `TypeAdapter` 검증과 연동된 `Retry Loop` 적용.
 
 ### 2.4. LLM Provider Abstraction (Local/Cloud 유연성 확보)
 - **설계 의도**: 사용자의 하드웨어 환경(CPU vs GPU) 및 보안 요구사항에 따라, 코드 수정을 최소화하고 **설정(Configuration)만으로 LLM 엔진을 교체**할 수 있어야 합니다. 
@@ -192,10 +197,16 @@ graph TD
 
 - **Process Isolation Architecture (Stability & Polyglot)**:
     - **설계 의도**: 외부 플러그인을 독립 프로세스로 실행하여, 메인 애플리케이션의 메모리와 실행 흐름을 완벽하게 보호하고 실시간 진행 상태를 모니터링합니다.
-    - **통신 프로토콜 (StdIO)**:
-        - `stdin`: JSON 포맷의 통짜 IR 데이터 전달.
-        - `stdout`: 오직 완성된 코드 텍스트만 출력.
-        - `stderr`: 실시간 로그, 진행률(`[PROGRESS] 10/100`), 에러(`[ERROR] ...`) 출력.
+    - **표준 통신 프로토콜 (StdIO)**:
+        - `stdin`: JSON 포맷의 통짜 IR 데이터 배열 전달 (단 1회 직렬화/역직렬화).
+        - `stdout`: 오직 완성된 코드 텍스트만 출력. 디버깅용 로그 혼입 금지.
+        - `stderr`: 실시간 상태 보고 및 에러 로깅.
+            - `[PROGRESS] M/N`: UI 진행률 바 업데이트용
+            - `[INFO]`, `[WARN]`: 일반 상태 메시지 및 UI 경고
+            - `[ERROR]`: 치명적 예외 (문자열 파싱 후 UI 에러 팝업)
+    - **BaseAdapter 추상화 (SDK 형태 제공)**:
+        - 파이썬 기반 어댑터 생성을 쉽게 하기 위해 `BaseAdapter` 추상 클래스를 제공합니다.
+        - 개발자는 `translate_action()`, `translate_check()` 등 핵심 로직만 오버라이딩하면 되며, I/O 바인딩(`sys.stdin/stdout`)과 예외 처리 루프(try-catch)는 Base Class가 전담하여 코어 로직의 일관성을 강제합니다.
     - **구현 상세 (`subprocess` 및 Thread 활용)**:
       ```python
       import subprocess
@@ -267,3 +278,86 @@ graph TD
 - **UI/DB 연동**: 
     - **GUI**: Streamlit을 통해 사용자에게 변환 과정을 시각적으로 전달 (상세: `ui_proposal.md`).
     - **DB**: 매핑 결과와 학습 데이터를 영구 저장하여 지속적 고도화 지원 (상세: `db_design.md`).
+- **추적성 및 로깅 (Traceability & Logging)**:
+    - **Trace ID**: 사용자 변환 요청 시 단일 `uuid`를 발급하여, Core Engine -> API 호출 -> Adapter Subprocess까지 전체 파이프라인의 로그를 결합합니다.
+    - **Dual-Output Logging**: `structlog`를 활용하여 시스템 분석용(기계 친화적 JSON) 로그와, 개발/디버그용(사람 친화적 Console 색상) 텍스트 로그를 분리하여 동시 출력합니다. 이를 통해 파이프라인 구간별 장애 원인을 일관되게 추적합니다.
+- **의존성 주입(DI) 기반 테스트 환경 (Mock & Local LLM)**:
+    - **테스트 비용 절감**: LLM Provider와 Vector DB 모듈을 하드코딩하지 않고 외부에서 주입(Injection)할 수 있도록 설계합니다.
+    - **테스트 격리**: 빠른 로직 검증 시에는 순수 `MockLLMProvider`를 주입하여 비용 0원으로 코어 루프를 테스트하고, 실제 프롬프트 검증 시에는 `LocalCPUProvider`(Ollama 등)로 스위칭하여 OpenAI/Gemini API 토큰 낭비를 원천 차단합니다.
+
+---
+
+## 4. 최근 테스트 및 아키텍처 개선 반영 사항
+
+시스템 구동 및 통합 테스트 과정에서 발견된 주요 한계점들을 개선하여 현재 버전에 반영된 주요 아키텍처 변경점입니다.
+
+### 4.1. 단일 스텝 다중 동작(Multi-action) 파싱 개선
+초기 설계에서는 자연어 1문장(Step) 당 1개의 IR 객체(`dict`)가 반환될 것으로 가정했으나, 현업 데이터는 "시동을 켜고 속도를 50으로 올린다" 처럼 다중 동작이 병합된 경우가 많았습니다.
+- **해결책**:
+  - LLM Prompt를 전면 수정하여, 단일 동작이든 다중 동작이든 **반드시 JSON Array(`List[dict]`) 형태로 반환**하도록 강제했습니다.
+  - Core Engine(`_process_step_with_retry`)에서 반환된 Array를 `extend`하여 전체 순차 리스트에 정상 편입시키도록 로직을 수정했습니다.
+
+### 4.2. RAG 검색 컨텍스트 (top_k) 및 Ontology 통합 확장
+다중 동작이 포함된 긴 문장의 경우, 기존 `top_k=2` 설정에서는 첫 번째 동작에 관련된 시그널만 검색되고 뒷부분의 동작은 시그널 검색 후보에서 누락되는 현상이 발생했습니다.
+- **해결책**:
+  - Vector DB 검색 `top_k`를 5로 확장하여 문장 내 여러 동작에 대응하는 다중 시그널 후보군을 폭넓게 확보합니다.
+  - 검색된 5개의 시그널 각각에 대해 Ontology Rule(사전 제약 조건)을 모두 쿼리하고 중복을 제거(De-duplication)하여 단일 [Context]에 모두 구겨넣어 LLM의 판단 근거를 대폭 보강했습니다.
+
+### 4.3. LLM 데이터 타입(Primitive Value) 환각 현상 방지
+로컬 소형 LLM의 경우, Pydantic 스키마를 과하게 해석하여 값 필드에 `{"type": "int", "value": 10}` 와 같은 불필요한 Dictionary 래핑을 하는 환각 현상이 지속 관찰되었습니다.
+- **해결책**: Prompt Instruction에 명시적으로 _"절대 딕셔너리 구조를 쓰지 말고 원시 값(Primitive Value)을 직접 넣을 것"_ 이라는 강제 조항을 추가하여 데이터 타입 붕괴를 해결했습니다.
+
+### 4.4. 선택적 TC 변환 (Selective Conversion) 지원
+수백 개의 TC가 포함된 파일 업로드 시 일괄 변환으로 인한 대기 시간과 불필요한 LLM API 비용을 막기 위해 UI 및 Engine간 인터페이스를 개선했습니다.
+- **해결책**: Streamlit UI의 `st.multiselect`를 통해 사용자가 변환을 원하는 특정 TC ID만 선택하여 CoreEngine(`process_file_stream`)으로 전달할 수 있도록 파이프라인 파라미터를 확장했습니다.
+
+---
+
+## 5. Class & Module Reference (상세 명세)
+
+### 5.1. Core Pipeline (Internal Logic)
+
+#### [Class] `CoreEngine` (`src/core/engine.py`)
+전체 변환 프로세스를 오케스트레이션하는 중앙 제어 모듈입니다.
+- **주요 속성**:
+    - `llm`: 설정된 LLM 공급자 인스턴스 (`ILLMProvider`)
+    - `rag`: 하이브리드 RAG 엔진 인스턴스 (`HybridRAGEngine`)
+- **핵심 메서드**:
+    - `process_file_stream(file_path)` : [Generator] 파일을 읽어 TC별로 파이프라인(RAG-LLM-Adapter)을 실행하고 실시간 진행 상황을 반환합니다.
+    - `_process_step_with_retry(step, t_logger)` : 단일 스텝의 파싱 및 유효성 검사를 수행하며, 실패 시 최대 3회 자가 수정을 시도합니다.
+    - `_send_to_adapter_stream(tc_ir, ...)` : 생성된 IR을 서브프로세스 어댑터의 `stdin`으로 전달하고 `stdout`으로 코드를 수집합니다.
+
+#### [Class] `HybridRAGEngine` (`src/core/rag_engine.py`)
+Vector DB의 시맨틱 검색과 Ontology의 규칙 검증을 결합한 지능형 지식 추출기입니다.
+- **핵심 메서드**:
+    - `search_signals(query_text, top_k, threshold)` : ChromaDB를 사용하여 자연어 문장과 가장 유사한 시그널 후보들을 검색합니다.
+    - `validate_preconditions(target_signal)` : Ontology DB를 조회하여 해당 시그널 조작 전 필요한 선행 조건(예: Ignition ON) 목록을 반환합니다.
+
+#### [Class] `PromptBuilder` (`src/core/prompt_builder.py`)
+복잡한 지시어와 수집된 문맥(Context) 데이터를 결합하여 LLM용 프롬프트를 동적으로 조립합니다.
+- **핵심 메서드**:
+    - `get_system_prompt()` : IR 생성 규칙, 스키마 정의, 금지 사항 등이 담긴 고정 시스템 프롬프트를 반환합니다.
+    - `build_prompt(user_text, rag_signals, rag_rules)` : 사용자 스텝과 RAG 검색 데이터를 조합하여 최종 [CONTEXT] 영역을 구성합니다.
+
+#### [Class] `LLMFactory` & `ILLMProvider` (`src/core/llm_provider.py`)
+다양한 LLM 엔진을 추상화하여 설정만으로 엔진 교체가 가능하도록 지원합니다.
+- **구현체**: `LocalCPUProvider` (Ollama), `OpenAIProvider`, `GeminiProvider`.
+- **기능**: JSON 모드 강제, 타임아웃 처리, 에러 핸들링.
+
+---
+
+### 5.2. Adapt Layer (Code Generation)
+
+#### [Abstract Class] `BaseAdapter` (`src/adapters/base_adapter.py`)
+IR을 타겟 스크립트로 변환하는 모든 어댑터의 표준 뼈대입니다.
+- **핵심 메서드**:
+    - `run()` : [Template Method] `stdin`에서 IR JSON 배열을 읽어 루프를 돌며 전체 변환 과정을 제어합니다. (변경 금지)
+    - `translate_step(step, indent)` : IR 유형(SET, CHECK 등)에 따라 적절한 변환 메서드로 라우팅합니다.
+- **상태 보고**: `log_progress`, `log_info`, `log_error`를 통해 서브프로세스 외부로 실시간 상태(stderr)를 전달합니다.
+
+#### [Class] `SimvaAdapter` (`src/adapters/simva_adapter.py`)
+`BaseAdapter`를 상속받아 SIMVA 전용 Python 코드를 생성하는 구현체입니다.
+- **특화 기능**:
+    - `_format_signal(sig)` : 시그널 명칭에 q. 접두사를 붙이거나 특수문자를 정제합니다.
+    - `_format_value(val)` : 데이터 타입에 따라 상수 매핑(`q.ON`) 또는 쿼트 처리를 수행합니다.
+    - `translate_condition()`, `translate_loop()` : 복합 제어 구문을 Python 문법에 맞게 시퀀스 단위로 생성합니다.

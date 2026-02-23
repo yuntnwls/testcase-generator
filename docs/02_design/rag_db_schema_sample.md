@@ -160,17 +160,17 @@ JSON 형식으로 정의한 간이 온톨로지 샘플입니다.
 ### 4.1. 저장소 구성 (Storage Architecture)
 데이터 영속성을 위해 시스템은 로컬 파일 기반의 경량 DB를 사용합니다.
 - **Vector DB**: `ChromaDB` (로컬 디스크 모드) -> `data/vector_db/` 디렉토리에 저장.
-- **Ontology**: `JSON` 또는 `Neo4j(Local)` -> 초기에는 `data/ontology/graph_rules.json` 파일로 관리.
+- **Ontology**: `JSON` 기반 룰셋 -> 초기 구동 시 `data/mock_ontology_db.json` 파일 우선 사용 (또는 향후 Neo4j 등 확장).
 
 ### 4.2. 라이프사이클 단계별 동작
 
 #### [단계 1] 시스템 최초 초기화 (Initialization / Bootstrap)
 - **언제**: 솔루션을 처음 설치하거나 처음 구동할 때. (또는 관리자가 `Initialize DB` 버튼을 누를 때)
 - **동작**:
-    1. 시스템 내부에 내장된(Built-in) **기본 도메인 지식 JSON 파일**(위 1.2, 2.2의 Mock Data 형태)을 읽어 들입니다.
-    2. JSON의 `text` 필드 값들을 LLM(또는 로컬 임베딩 모델, 예: `all-MiniLM-L6-v2`)을 통해 **벡터 배열(Embeddings)로 변환**합니다. (최초 1회만 임베딩 API 비용/시간 소요)
-    3. 변환된 벡터와 메타데이터를 `data/vector_db/` 경로에 ChromaDB 컬렉션으로 물리적으로 생성 및 저장(`Insert`)합니다.
-    4. Ontology 룰은 `data/ontology/graph_rules.json`에 초기 세팅으로 복사됩니다.
+    1. `data/generate_mock_data.py` 스크립트를 통해 생성된 **기본 임베딩용 JSON 데이터**를 읽어 들입니다.
+    2. JSON의 `text` 필드 값들을 임베딩 모델(예: `all-MiniLM-L6-v2`)을 통해 **벡터 배열(Embeddings)로 변환**합니다. (최초 1회 소요)
+    3. 변환된 벡터와 메타데이터를 `data/vector_db/` 경로에 ChromaDB 컬렉션으로 물리적 저장(`Insert`)합니다.
+    4. Ontology 규칙은 `data/mock_ontology_db.json` 파일 그대로 로드됩니다.
 
 #### [단계 2] 런타임 조회 (Runtime Retrieval / Query)
 - **언제**: 사용자가 TC 엑셀 파일을 업로드하고 **"변환(Generate)"**을 실행하여 Core Engine이 동작하는 중.
@@ -191,7 +191,7 @@ JSON 형식으로 정의한 간이 온톨로지 샘플입니다.
         4. 즉, **런타임 동작을 멈추지 않고 실시간으로 지식을 확장**할 수 있습니다.
     - **Ontology 추가 반영**:
         1. UI를 통해 "속도 제어 기어는 D 상태여야 한다"는 룰이 수동 입력됨.
-        2. `data/ontology/graph_rules.json` 파일 내부의 `relationships` 배열에 새 JSON 블록 단위로 내용이 `Append(추가)` 됩니다.
+        2. `data/mock_ontology_db.json` 파일 내부의 `relationships` 배열에 새 JSON 블록 단위로 내용이 `Append(추가)` 됩니다.
         3. 다음 번 TC 변환 작업부터 새로 추가된 룰이 적용되어 오류를 더 잘 걸러냅니다.
 
 ### 4.3. 결론

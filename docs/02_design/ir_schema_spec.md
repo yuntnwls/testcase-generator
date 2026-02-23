@@ -6,7 +6,7 @@
 
 ## 1. IR 설계 원칙
 1. **Target-Agnostic**: `simva`나 `CAPL` 등 특정 언어의 함수명이나 문법이 포함되어서는 안 됩니다. 오직 "행위의 의도(Intent)"만을 담습니다.
-2. **Atomic Actions**: 복잡한 자연어 문장은 최소 단위의 단일 행동(Atomic Action)으로 분할되어 하나의 IR 객체로 매핑됩니다.
+2. **Atomic Actions**: 복잡한 자연어 문장은 최소 단위의 단일 행동(Atomic Action)들로 분할되어 **여러 개의 IR 객체를 담은 배열(List)**로 매핑될 수 있습니다 (다중 동작 스텝 지원).
 3. **Graceful Degradation**: 해석 불가능한 문장에 대해서는 전체 프로세스를 죽이지 않고 `UNKNOWN` 타입으로 처리하여 어댑터로 넘깁니다.
 
 ---
@@ -40,6 +40,7 @@ class BaseIR(BaseModel):
 
 ### 2.2. SET IR (상태 변경/제어)
 시그널의 값을 변경하는 행위입니다. (자연어 예시: _"속도를 60으로 맞춘다"_, _"엔진을 켠다"_)
+*주의:* `value` 필드에는 딕셔너리 객체가 아닌 원시 값(int, float, str, bool)이 스칼라 형태로 직접 들어가야 합니다.
 
 ```python
 class SetIR(BaseIR):
@@ -53,6 +54,7 @@ class SetIR(BaseIR):
 
 ### 2.3. CHECK IR (상태 검증)
 특정 시그널이 예상된 값을 가지는지(또는 유지하는지) 검사합니다. (자연어 예시: _"속도가 60인지 3초 동안 확인한다"_, _"전조등이 켜져 있는지 본다"_)
+*주의:* `expected_value` 필드에는 원시 값(int, float, str, bool)이 스칼라 형태로 직접 들어가야 합니다.
 
 ```python
 class Operator(str, Enum):
@@ -187,43 +189,35 @@ Core Engine은 Pydantic 모델의 `model_dump_json()` 메서드를 호출하여 
 Adapter 프로세스는 위 JSON을 받아 다음과 같이 Pydantic을 이용해 **역직렬화(Deserialize)** 하여 처리합니다. 이 과정에서 타입이 맞지 않거나 필수 필드가 없으면 즉시 에러(`ValidationError`)를 뱉어내어 잘못된 타겟 코드 생성을 원천 차단합니다.
 
 ```python
-# Adapter 내 코드 일부 (미리보기)
-import sys
-import json
-from pydantic import TypeAdapter
+# Adapter 구현 예시 (BaseAdapter SDK 활용)
+from src.adapters.base_adapter import BaseAdapter
+from pydantic import TypeAdapter, ValidationError
+import simva # 타겟 언어 라이브러리 가상 예시
 
-# stdin으로 JSON 문자열 확보
-raw_json_str = sys.stdin.read()
-
-# AnyIR 리스트로 역직렬화 (Pydantic 2.0 권장 방식)
-adapter = TypeAdapter(TestCaseIR)
-parsed_tc = adapter.validate_json(raw_json_str)
-
-def render_step(step, indent="    "):
-    if step.type == IRType.SET:
-        return f"{indent}simva.set({step.logical_signal}, {step.value})"
+class SimvaAdapter(BaseAdapter):
     
-    elif step.type == IRType.WAIT:
-        return f"{indent}time.sleep({step.duration_sec})"
+    def translate_action(self, step: dict) -> str:
+        # Pydantic 모델 검증은 BaseAdapter 또는 내부 유틸리티에서 사전에 수행되었다고 가정
+        signal = step["logical_signal"]
+        value = step["value"]
+        return f"    simva.set('{signal}', {value})"
         
-    elif step.type == IRType.MACRO_CALL:
-        # 사용자 정의 함수를 그대로 출력 (상단에 import 필수)
-        args_str = ", ".join(f"{k}={v}" for k, v in step.arguments.items()) if step.arguments else ""
-        return f"{indent}{step.macro_name}({args_str})"
-        
-    elif step.type == IRType.LOOP:
-        # 'for' 루프 텍스트 렌더링 후, body 안의 내용들을 재귀적으로 들여쓰기 추가하여 변환
-        loop_code = f"{indent}for _ in range({step.count}):\n"
-        for child_step in step.body:
-            loop_code += render_step(child_step, indent + "    ") + "\n"
-        return loop_code.rstrip()
-        
-    elif step.type == IRType.UNKNOWN:
-        return f"{indent}# FIXME: {step.original_text} (Reason: {step.reason})"
+    def translate_check(self, step: dict) -> str:
+        signal = step["logical_signal"]
+        expected = step["expected_value"]
+        operator = step.get("operator", "==")
+        return f"    assert simva.get('{signal}') {operator} {expected}"
 
-# 실제 변환 실행
-for step in parsed_tc.steps:
-    print(render_step(step))
+    def generate_header(self) -> str:
+        return "import simva\nimport time\n\n# --- Auto-Generated Test Script ---\n"
+        
+    def generate_footer(self) -> str:
+        return "\n# --- End of Test Script ---\n"
+
+if __name__ == "__main__":
+    # BaseAdapter의 run() 메서드가 stdin 읽기, JSON 파싱, 반복문 및 stdout/stderr 출력을 모두 관장함
+    adapter = SimvaAdapter()
+    adapter.run()
 ```
 
 ### 4.1. 왜 이렇게 분리했는가? (LLM Code Generation vs Direct Translation)

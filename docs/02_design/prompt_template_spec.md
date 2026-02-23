@@ -23,8 +23,9 @@ LLM에 전달되는 전체 입력(Payload)은 크게 3가지 계층으로 나뉩
 ```text
 [SYSTEM]
 당신은 자동차 도메인 테스트 스크립트의 "중간 표현(Intermediate Representation, IR)"을 생성하는 전문 AI 오라클입니다. 
-당신의 유일한 임무는 사용자의 자연어 테스트 스텝을 분석하여 지정된 JSON 스키마에 맞는 순수한 JSON 객체 1개를 반환하는 것입니다. 
-코드, 설명, 인사말을 절대 포함하지 마십시오.
+당신의 유일한 임무는 사용자의 자연어 테스트 스텝을 분석하여 지정된 JSON 스키마에 맞는 JSON 배열([ {...} ])을 반환하는 것입니다. 
+하나의 스텝에 여러 동작이 포함되어 있다면 순서대로 배열에 담고, 단일 동작이라도 반드시 JSON 배열 형태로 반환하십시오.
+코드, 설명, 인사말을 절대 포함하지 마십시오. 오직 대괄호로 시작하는 파싱 가능한 JSON 리스트만 반환하십시오.
 
 # IR JSON Schema Types:
 - SET: 시그널 값을 변경할 때 (필드: logical_signal, value)
@@ -36,7 +37,7 @@ LLM에 전달되는 전체 입력(Payload)은 크게 3가지 계층으로 나뉩
 # Rules:
 1. 제공되는 [Context] 영역의 RAG(VectorDB/Ontology) 데이터를 최우선으로 신뢰하여 logical_signal을 선택할 것.
 2. 도메인 제약조건(Pre-condition)을 위반한 조작이 발견되면, 무리하게 SET으로 변환하지 말고 반드시 UNKNOWN 타입으로 분류하고 reason에 위반 사유를 명시할 것.
-3. 시그널 값(value)은 [Context]에 제공된 Data Type에 맞게 변환할 것. (예: enum 일 경우 해당 문자열로)
+3. 시그널 값(value)은 절대 딕셔너리 구조({"type": "int", "value": 10})를 쓰지 말고 원시 값을 직접 넣을 것. (예: enum 일 경우 해당 문자열로)
 ```
 
 ---
@@ -71,13 +72,13 @@ LLM에 전달되는 전체 입력(Payload)은 크게 3가지 계층으로 나뉩
 
 ```text
 [INSTRUCTION]
-위 규칙 및 문맥 데이터를 바탕으로 아래 [Target Step]에 대한 IR JSON을 하나만 반환하세요.
+위 규칙 및 문맥 데이터를 바탕으로 아래 [Target Step]에 대한 IR JSON 배열을 반환하세요.
 
 # Few-Shot Examples
 User: "3초 대기한다."
-Assistant: {"type": "WAIT", "duration_sec": 3.0}
+Assistant: [{"type": "WAIT", "duration_sec": 3.0}]
 User: "아무말 대잔치 출력해"
-Assistant: {"type": "UNKNOWN", "reason": "No matching signal or logic found"}
+Assistant: [{"type": "UNKNOWN", "reason": "No matching signal or logic found"}]
 
 # Target Step
 Text: "{user_raw_text}"
@@ -120,9 +121,9 @@ def build_prompt(user_text: str, rag_context: dict) -> str:
 3. **[RAG 검색]** 1번 스텝인 `"엑셀을 밟는다"` 텍스트를 우선 Vector DB와 Ontology에 던져서 관련된 지식(Context)을 뽑아냅니다.
 4. **[프롬프트 조립]** 바로 이 시점! 방금 뽑아낸 지식과 원본 텍스트(`"엑셀을 밟는다"`)를 합쳐서 **본 문서에 정의된 거대한 프롬프트 1개**를 프로그래밍 방식으로 조립(String Formatting)합니다.
 5. **[LLM 호출]** 조립된 프롬프트를 LLM(Ollama/OpenAI)에 보냅니다.
-6. **[IR 생성]** LLM이 이 프롬프트를 읽고, 결과물로 단 1개의 JSON(`{"type": "SET", ...}`)을 반환합니다.
+6. **[IR 생성]** LLM이 이 프롬프트를 읽고, 결과물로 JSON 배열(`[{"type": "SET", ...}]`)을 반환합니다.
 7. **[다음 스텝]** 2번 스텝(`"에어컨을 튼다"`)으로 넘어가 구조적으로 동일하지만 내용만 바뀐 프롬프트를 다시 조립하여 LLM을 호출합니다.
 
-결론적으로 이 동적 프롬프트는 **"TC의 각 스텝(한 줄)을 분석하여 IR(JSON) 하나를 뽑아내야 할 때마다 (Phase 2 단계에서) 방금 찾은 최신 지식을 꾹꾹 눌러 담아 매번 새롭게 조립되어 LLM으로 전송되는 일회용 작업 지시서"**입니다. 전체 스크립트를 한 번에 던지는 것이 아닙니다.
+결론적으로 이 동적 프롬프트는 **"TC의 각 스텝(한 줄)을 분석하여 IR을 담은 JSON 배열 하나를 뽑아내야 할 때마다 (Phase 2 단계에서) 방금 찾은 최신 지식(다중 검색)을 꾹꾹 눌러 담아 매번 새롭게 조립되어 LLM으로 전송되는 일회용 작업 지시서"**입니다. 전체 스크립트를 한 번에 던지는 것이 아닙니다.
 
 이 프롬프트 아키텍처를 통해, LLM은 백지 상태에서 추측('환각')하는 대신, **우리가 제공하는 족보(Vector DB)와 법전(Ontology) 그리고 엄격한 답안지 양식(JSON Schema) 안에서만 안전하게 동작**하게 됩니다.

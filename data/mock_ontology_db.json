@@ -1,0 +1,74 @@
+{
+  "nodes": [
+    {
+      "id": "Ignition_Status",
+      "type": "Signal",
+      "description": "엔진 시동 상태"
+    },
+    {
+      "id": "VehicleSpeed",
+      "type": "Signal",
+      "description": "차량 주행 속도"
+    },
+    {
+      "id": "HeadLamp_State",
+      "type": "Signal",
+      "description": "전조등 상태"
+    },
+    {
+      "id": "Battery_Voltage",
+      "type": "Signal",
+      "description": "배터리 전압"
+    },
+    {
+      "id": "Door_Status",
+      "type": "Signal",
+      "description": "도어 잠금 상태"
+    },
+    {
+      "id": "Wiper_State",
+      "type": "Signal",
+      "description": "와이퍼 상태"
+    },
+    {
+      "id": "HazardLightSw",
+      "type": "Signal",
+      "description": "비상등 스위치"
+    },
+    {
+      "id": "WarningLamp",
+      "type": "Signal",
+      "description": "경고등/알람"
+    }
+  ],
+  "relationships": [
+    {
+      "source": "VehicleSpeed",
+      "relation": "REQUIRES",
+      "target": "Ignition_Status",
+      "condition": "== ON",
+      "description": "차량 속도를 올리려면 반드시 엔진 시동(IGN)이 켜져 있어야 합니다."
+    },
+    {
+      "source": "HeadLamp_State",
+      "relation": "AFFECTS",
+      "target": "Battery_Voltage",
+      "effect": "DECREASE",
+      "description": "전조등을 켜면 배터리 전압이 일시적으로 하강할 수 있습니다."
+    },
+    {
+      "source": "Wiper_State",
+      "relation": "REQUIRES",
+      "target": "Ignition_Status",
+      "condition": "== ON",
+      "description": "와이퍼 모터는 시동이 켜진(또는 ACC) 상태에서만 전원을 공급받아 동작합니다."
+    },
+    {
+      "source": "VehicleSpeed",
+      "relation": "CONFLICTS_WITH",
+      "target": "Door_Status",
+      "condition": "== OPEN",
+      "description": "주행 중(Velocity > 0)일 때는 도어가 열려(OPEN) 있어서는 안 됩니다. (위험 요소)"
+    }
+  ]
+}

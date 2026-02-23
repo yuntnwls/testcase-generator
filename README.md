@@ -35,6 +35,15 @@ TestscriptGenerator/
 ## 📝 문서 가이드
 
 자세한 설계 및 분석 내용은 아래 문서를 참조하십시오.
-1. [상세 분석 보고서](docs/01_analysis/analysis_report.md)
-2. [상세 설계서](docs/02_design/detailed_design.md)
-3. [GUI 개발 제안서](docs/02_design/ui_proposal.md)
+
+- **기본 설계**:
+    - [상세 분석 보고서](docs/01_analysis/analysis_report.md)
+    - [상세 설계서](docs/02_design/detailed_design.md)
+    - [GUI 개발 제안서](docs/02_design/ui_proposal.md)
+
+- **고도화 설계 전략 (Strategy)**:
+    1. [주제 1: LLM 자기 수정 루프](docs/02_design/strategy/Topic1_LLM_Self_Correction_Design.md)
+    2. [주제 2: 어댑터 SDK 및 프로토콜](docs/02_design/strategy/Topic2_Adapter_SDK_Design.md)
+    3. [주제 3: 추적성 및 로깅 아키텍처](docs/02_design/strategy/Topic3_Logging_Traceability_Design.md)
+    4. [주제 4: 테스트 환경 설계](docs/02_design/strategy/Topic4_Testing_Architecture_Design.md)
+    5. [주제 5: 지능형 지식 기반 어댑터](docs/02_design/strategy/Topic5_Smart_Adapter_LLM_Strategy.md)

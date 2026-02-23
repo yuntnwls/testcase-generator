@@ -12,58 +12,66 @@
 sequenceDiagram
     autonumber
     
-    actor User as "사용자"
-    participant UI as "Streamlit UI <br/> (Main App)"
-    participant Core as "Core Engine <br/> (Main Process)"
-    participant VectorDB as "Vector DB <br/> (Chroma)"
-    participant Ontology as "Ontology Graph <br/> (Local JSON)"
-    participant LLM as "LLM Provider <br/> (Ollama/OpenAI)"
-    participant Adapter as "Adapter Process <br/> (Subprocess)"
+    actor User
+    participant UI as Streamlit UI
+    participant Core as Core Engine
+    participant VectorDB as Vector DB
+    participant Ontology as Ontology Graph
+    participant LLM as LLM Provider
+    participant Adapter as Adapter Process
     
-    User->>UI: 자연어 TC 파일 업로드 및 "실행" 클릭
+    User->>UI: TC 파일 업로드 및 실행 클릭
     UI->>Core: 변환 요청 전달
-    Core->>UI: 진행률 바 (0%) 렌더링
+    Core->>UI: 진행률 바 렌더링 시작
     
     rect rgb(240, 248, 255)
-        Note right of Core: [Phase 1] Hybrid RAG & Context Enrichment
-        loop 각 자연어 문장 (Step) 마다 반복
-            Core->>VectorDB: 키워드 임베딩 및 유사도 검색 <br/> (예: "엑셀 밟아")
-            VectorDB-->>Core: 매핑된 논리 시그널 반환 <br/> (예: "VehicleSpeed")
+        Note right of Core: Phase 1: Hybrid RAG & Context Enrichment
+        loop 각 자연어 문장마다 반복
+            Core->>VectorDB: 키워드 임베딩 및 유사도 검색
+            VectorDB-->>Core: 매핑된 논리 시그널 반환
             
-            Core->>Ontology: 논리 시그널의 제약 조건 조회
-            Ontology-->>Core: 선행 조건(Pre-condition) 반환 <br/> (예: "REQUIRES Ignition == ON")
+            Core->>Ontology: 논리 시그널 제약 조건 조회
+            Ontology-->>Core: 선행 조건 규칙 반환
             
-            Core->>Core: 과거 Step 기록(Context) 검사 <br/> 선행 조건 만족 여부 확인 (Rule Validation)
+            Core->>Core: 과거 Step 기록과 선행 조건 매칭
         end
     end
     
     rect rgb(255, 240, 245)
-        Note right of Core: [Phase 2] Prompting & IR Generation
-        Core->>LLM: 조립된 프롬프트 전송 <br/> (원본 텍스트 + RAG 매핑 시그널 + 제약 조건 결과)
-        LLM-->>Core: JSON 형식의 IR 객체 생성 및 반환 <br/> (예: {"type": "SET", "logical_signal": "..."})
+        Note right of Core: Phase 2: Prompting & IR Generation
         
-        Core->>Core: Pydantic으로 JSON Schema 검증 (Validation)
+        loop 최대 3회 Self-Correction Retry
+            Core->>LLM: 프롬프트 및 에러 피드백 전송
+            LLM-->>Core: JSON 형식의 IR 객체 반환
+            
+            Core->>Core: Pydantic으로 Validation 수행
+            alt 검증 성공
+                Core->>Core: 유효한 IR 획득 후 루프 탈출
+            else 검증 실패
+                Core->>Core: 에러 메시지를 주입하여 재시도
+            end
+        end
     end
     
     rect rgb(240, 255, 240)
-        Note right of Core: [Phase 3] Adapter Subprocess Execution
-        Core->>Adapter: subprocess.Popen 실행 <br/> (Adapter Process Forking)
+        Note right of Core: Phase 3: Adapter Subprocess Execution
+        Core->>Adapter: subprocess.Popen 으로 격리 실행
         
-        Core->>Adapter: [stdin] 전체 TC의 IR JSON 배열 주입
+        Core->>Adapter: 전체 TC의 IR JSON 주입
         
         loop 코드 변환 중
-            Adapter->>UI: [stderr] 진행률(Progress) 로깅 출력 <br/> ("[PROGRESS] 50/100")
-            UI->>UI: 비동기 스레드로 읽어 UI 진행률 바 업데이트 
+            Adapter-->>UI: stderr를 통해 진행률 출력
+            UI->>UI: 화면 진행률 바 업데이트 
         end
         
-        Note right of Adapter: Direct Translation 패턴 작동 <br/> (IR JSON -> simva.set 텍스트 변환)
+        Note right of Adapter: Direct Translation 패턴 작동
         
-        Adapter-->>Core: [stdout] 완성된 Python Target Script 문자열 반환
-        Core->>Adapter: 서브프로세스 종료 플래그 확인 (returncode == 0)
+        Adapter-->>Core: 완성된 Python 스크립트 코드 반환
+        Core->>Adapter: 프로세스 종료 플래그 확인
     end
     
-    Core-->>UI: 최종 완성된 스크립트 코드 전달
-    UI->>User: 결과 코드 출력 (Syntax Highlight) 및 <br/> 다운로드 버튼 제공
+    Core-->>UI: 최종 스크립트 텍스트 전달
+    UI-->>User: 결과 출력 및 다운로드 버튼 제공
 ```
 
 ---

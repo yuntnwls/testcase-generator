@@ -1,0 +1,259 @@
+대상 제어기	대분류	중분류	소분류	Requirement ID	검증 목적	T/Case ID	협조 제어기	시험 전 조건	시험 방법	판정 조건	결과	Version	적용 지역	Variant Option	검증 시점	검증 환경	신호/변수	TC 개발 기준(기능 안전 대상)	초기화(Clean up)	플랜트 버전	자동화 스크립트 버전	데이터 저장 방법	시험 전 조건(RB/자동화)	시험 방법(RB/자동화)	판정 조건(RB/자동화)
+MCU	제어기능	WIPER	Washer	REQ_WIPER_Washer_v1	Washer 기능 점검 샘플 TC	TC_WIPER_001	M/F SW	1. (Initial_EngineOFF)	"1. (VehicleSpeed = 0)
+2. (Lamp_LightSwSta = On)
+3. (5초 후 KEY_IN)"	"1. (Lamp_PuddleLamp = Off)
+2. (CheckOverKPH(50))"		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"				1. (Initial_EngineOFF)	"1. (VehicleSpeed = 0)
+2. (Lamp_LightSwSta = On)
+3. (5초 후 KEY_IN)"	"1. (Lamp_PuddleLamp = Off)
+2. (CheckOverKPH(50))"
+VCU	제어기능	LAMP	Front Lamp	REQ_LAMP_FrontLamp_v1	Front Lamp 기능 점검 샘플 TC	TC_LAMP_002	M/F SW		"1. (Wait(500))
+2. (Lamp_LightSwSta = On)
+3. (VehicleSpeed = 50)"	1. (Lamp_PuddleLamp = Off)		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"					"1. (Wait(500))
+2. (Lamp_LightSwSta = On)
+3. (VehicleSpeed = 50)"	1. (Lamp_PuddleLamp = Off)
+VCU	제어기능	WIPER	Rear Wiper	REQ_WIPER_RearWiper_v1	Rear Wiper 기능 점검 샘플 TC	TC_WIPER_003	M/F SW		1. (VehicleSpeed = 100)	1. (Door_Status = UNLOCKED)		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"					1. (VehicleSpeed = 100)	1. (Door_Status = UNLOCKED)
+BDC (BCM)	제어기능	LAMP	Front Lamp	REQ_LAMP_FrontLamp_v1	Front Lamp 기능 점검 샘플 TC	TC_LAMP_004	M/F SW		"1. (Lamp_LightSwSta = Off)
+2. (5초 후 KEY_IN)"	1. (Door_Status = UNLOCKED)		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"					"1. (Lamp_LightSwSta = Off)
+2. (5초 후 KEY_IN)"	1. (Door_Status = UNLOCKED)
+ICU	제어기능	DOOR	Door Lock	REQ_DOOR_DoorLock_v1	Door Lock 기능 점검 샘플 TC	TC_DOOR_005	M/F SW	1. (Initial_EngineOFF)	"1. (Lamp_LightSwSta = On)
+2. (Wait(1000))
+3. (VehicleSpeed = 10)"	1. (Door_Status = LOCKED)		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"				1. (Initial_EngineOFF)	"1. (Lamp_LightSwSta = On)
+2. (Wait(1000))
+3. (VehicleSpeed = 10)"	1. (Door_Status = LOCKED)
+ICU	제어기능	DOOR	Door Lock	REQ_DOOR_DoorLock_v1	Door Lock 기능 점검 샘플 TC	TC_DOOR_006	M/F SW		"1. (VehicleSpeed = 50)
+2. (Lamp_LightSwSta = On)"	1. (Lamp_PuddleLamp = On)		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"					"1. (VehicleSpeed = 50)
+2. (Lamp_LightSwSta = On)"	1. (Lamp_PuddleLamp = On)
+ICU	제어기능	DOOR	Power Window	REQ_DOOR_PowerWindow_v1	Power Window 기능 점검 샘플 TC	TC_DOOR_007	M/F SW		"1. (VehicleSpeed = 10)
+2. (Lamp_LightSwSta = On)"	1. (Door_Status = UNLOCKED)		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"					"1. (VehicleSpeed = 10)
+2. (Lamp_LightSwSta = On)"	1. (Door_Status = UNLOCKED)
+VCU	제어기능	DOOR	Door Lock	REQ_DOOR_DoorLock_v1	Door Lock 기능 점검 샘플 TC	TC_DOOR_008	M/F SW	1. (Initial_EngineOFF)	"1. (5초 후 KEY_IN)
+2. (VehicleSpeed = 50)
+3. (Lamp_LightSwSta = Off)"	1. (CheckOverKPH(10))		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"				1. (Initial_EngineOFF)	"1. (5초 후 KEY_IN)
+2. (VehicleSpeed = 50)
+3. (Lamp_LightSwSta = Off)"	1. (CheckOverKPH(10))
+MCU	제어기능	WIPER	Front Wiper	REQ_WIPER_FrontWiper_v1	Front Wiper 기능 점검 샘플 TC	TC_WIPER_009	M/F SW	1. (Initial_EngineOFF)	1. (Lamp_LightSwSta = On)	"1. (CheckOverKPH(10))
+2. (Door_Status = UNLOCKED)"		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"				1. (Initial_EngineOFF)	1. (Lamp_LightSwSta = On)	"1. (CheckOverKPH(10))
+2. (Door_Status = UNLOCKED)"
+BDC (BCM)	제어기능	WIPER	Front Wiper	REQ_WIPER_FrontWiper_v1	Front Wiper 기능 점검 샘플 TC	TC_WIPER_010	M/F SW	1. (Initial_EngineOFF)	1. (VehicleSpeed = 10)	1. (Door_Status = LOCKED)		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"				1. (Initial_EngineOFF)	1. (VehicleSpeed = 10)	1. (Door_Status = LOCKED)
+VCU	제어기능	DOOR	Power Window	REQ_DOOR_PowerWindow_v1	Power Window 기능 점검 샘플 TC	TC_DOOR_011	M/F SW	1. (Initial_EngineOFF)	1. (Lamp_LightSwSta = Off)	"1. (Lamp_PuddleLamp = Off)
+2. (CheckOverKPH(10))"		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"				1. (Initial_EngineOFF)	1. (Lamp_LightSwSta = Off)	"1. (Lamp_PuddleLamp = Off)
+2. (CheckOverKPH(10))"
+VCU	제어기능	LAMP	Front Lamp	REQ_LAMP_FrontLamp_v1	Front Lamp 기능 점검 샘플 TC	TC_LAMP_012	M/F SW		"1. (Lamp_LightSwSta = Off)
+2. (VehicleSpeed = 0)
+3. (Wait(500))"	"1. (Lamp_PuddleLamp = On)
+2. (Door_Status = UNLOCKED)"		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"					"1. (Lamp_LightSwSta = Off)
+2. (VehicleSpeed = 0)
+3. (Wait(500))"	"1. (Lamp_PuddleLamp = On)
+2. (Door_Status = UNLOCKED)"
+BDC (BCM)	제어기능	DOOR	Tailgate	REQ_DOOR_Tailgate_v1	Tailgate 기능 점검 샘플 TC	TC_DOOR_013	M/F SW		"1. (Lamp_LightSwSta = On)
+2. (Wait(1000))"	"1. (Door_Status = LOCKED)
+2. (Lamp_PuddleLamp = On)"		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"					"1. (Lamp_LightSwSta = On)
+2. (Wait(1000))"	"1. (Door_Status = LOCKED)
+2. (Lamp_PuddleLamp = On)"
+VCU	제어기능	DOOR	Power Window	REQ_DOOR_PowerWindow_v1	Power Window 기능 점검 샘플 TC	TC_DOOR_014	M/F SW	1. (Initial_EngineON)	"1. (Wait(500))
+2. (VehicleSpeed = 100)"	"1. (Door_Status = LOCKED)
+2. (CheckOverKPH(50))"		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"				1. (Initial_EngineON)	"1. (Wait(500))
+2. (VehicleSpeed = 100)"	"1. (Door_Status = LOCKED)
+2. (CheckOverKPH(50))"
+VCU	제어기능	DOOR	Door Lock	REQ_DOOR_DoorLock_v1	Door Lock 기능 점검 샘플 TC	TC_DOOR_015	M/F SW	1. (Initial_EngineOFF)	"1. (Wait(1000))
+2. (Lamp_LightSwSta = Off)
+3. (VehicleSpeed = 100)"	"1. (CheckOverKPH(10))
+2. (Lamp_PuddleLamp = Off)"		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"				1. (Initial_EngineOFF)	"1. (Wait(1000))
+2. (Lamp_LightSwSta = Off)
+3. (VehicleSpeed = 100)"	"1. (CheckOverKPH(10))
+2. (Lamp_PuddleLamp = Off)"
+ICU	제어기능	DOOR	Tailgate	REQ_DOOR_Tailgate_v1	Tailgate 기능 점검 샘플 TC	TC_DOOR_016	M/F SW		1. (Wait(1000))	"1. (Lamp_PuddleLamp = On)
+2. (Door_Status = UNLOCKED)"		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"					1. (Wait(1000))	"1. (Lamp_PuddleLamp = On)
+2. (Door_Status = UNLOCKED)"
+MCU	제어기능	WIPER	Front Wiper	REQ_WIPER_FrontWiper_v1	Front Wiper 기능 점검 샘플 TC	TC_WIPER_017	M/F SW	1. (Initial_EngineON)	"1. (Wait(1000))
+2. (VehicleSpeed = 50)"	1. (CheckOverKPH(10))		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"				1. (Initial_EngineON)	"1. (Wait(1000))
+2. (VehicleSpeed = 50)"	1. (CheckOverKPH(10))
+BDC (BCM)	제어기능	DOOR	Door Lock	REQ_DOOR_DoorLock_v1	Door Lock 기능 점검 샘플 TC	TC_DOOR_018	M/F SW		"1. (VehicleSpeed = 50)
+2. (Lamp_LightSwSta = On)
+3. (Wait(500))"	"1. (Lamp_PuddleLamp = On)
+2. (Door_Status = LOCKED)"		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"					"1. (VehicleSpeed = 50)
+2. (Lamp_LightSwSta = On)
+3. (Wait(500))"	"1. (Lamp_PuddleLamp = On)
+2. (Door_Status = LOCKED)"
+BDC (BCM)	제어기능	DOOR	Door Lock	REQ_DOOR_DoorLock_v1	Door Lock 기능 점검 샘플 TC	TC_DOOR_019	M/F SW		"1. (5초 후 KEY_IN)
+2. (VehicleSpeed = 100)
+3. (Lamp_LightSwSta = On)"	"1. (Door_Status = LOCKED)
+2. (CheckOverKPH(10))"		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"					"1. (5초 후 KEY_IN)
+2. (VehicleSpeed = 100)
+3. (Lamp_LightSwSta = On)"	"1. (Door_Status = LOCKED)
+2. (CheckOverKPH(10))"
+MCU	제어기능	LAMP	Interior Lamp	REQ_LAMP_InteriorLamp_v1	Interior Lamp 기능 점검 샘플 TC	TC_LAMP_020	M/F SW	1. (Initial_EngineON)	1. (Wait(500))	"1. (Door_Status = UNLOCKED)
+2. (Lamp_PuddleLamp = On)"		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"				1. (Initial_EngineON)	1. (Wait(500))	"1. (Door_Status = UNLOCKED)
+2. (Lamp_PuddleLamp = On)"
+BDC (BCM)	제어기능	LAMP	Interior Lamp	REQ_LAMP_InteriorLamp_v1	Interior Lamp 기능 점검 샘플 TC	TC_LAMP_021	M/F SW		"1. (5초 후 KEY_IN)
+2. (Lamp_LightSwSta = On)"	1. (Lamp_PuddleLamp = Off)		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"					"1. (5초 후 KEY_IN)
+2. (Lamp_LightSwSta = On)"	1. (Lamp_PuddleLamp = Off)
+MCU	제어기능	DOOR	Tailgate	REQ_DOOR_Tailgate_v1	Tailgate 기능 점검 샘플 TC	TC_DOOR_022	M/F SW		1. (Lamp_LightSwSta = Off)	"1. (CheckOverKPH(10))
+2. (Door_Status = LOCKED)"		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"					1. (Lamp_LightSwSta = Off)	"1. (CheckOverKPH(10))
+2. (Door_Status = LOCKED)"
+VCU	제어기능	LAMP	Front Lamp	REQ_LAMP_FrontLamp_v1	Front Lamp 기능 점검 샘플 TC	TC_LAMP_023	M/F SW		1. (VehicleSpeed = 50)	"1. (CheckOverKPH(50))
+2. (Lamp_PuddleLamp = On)"		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"					1. (VehicleSpeed = 50)	"1. (CheckOverKPH(50))
+2. (Lamp_PuddleLamp = On)"
+VCU	제어기능	DOOR	Tailgate	REQ_DOOR_Tailgate_v1	Tailgate 기능 점검 샘플 TC	TC_DOOR_024	M/F SW	1. (Initial_EngineON)	1. (VehicleSpeed = 50)	"1. (CheckOverKPH(10))
+2. (Lamp_PuddleLamp = Off)"		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"				1. (Initial_EngineON)	1. (VehicleSpeed = 50)	"1. (CheckOverKPH(10))
+2. (Lamp_PuddleLamp = Off)"
+BDC (BCM)	제어기능	DOOR	Power Window	REQ_DOOR_PowerWindow_v1	Power Window 기능 점검 샘플 TC	TC_DOOR_025	M/F SW		1. (VehicleSpeed = 100)	1. (Lamp_PuddleLamp = Off)		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"					1. (VehicleSpeed = 100)	1. (Lamp_PuddleLamp = Off)
+VCU	제어기능	DOOR	Power Window	REQ_DOOR_PowerWindow_v1	Power Window 기능 점검 샘플 TC	TC_DOOR_026	M/F SW	1. (Initial_EngineOFF)	"1. (5초 후 KEY_IN)
+2. (VehicleSpeed = 0)"	"1. (Lamp_PuddleLamp = Off)
+2. (CheckOverKPH(50))"		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"				1. (Initial_EngineOFF)	"1. (5초 후 KEY_IN)
+2. (VehicleSpeed = 0)"	"1. (Lamp_PuddleLamp = Off)
+2. (CheckOverKPH(50))"
+MCU	제어기능	LAMP	Interior Lamp	REQ_LAMP_InteriorLamp_v1	Interior Lamp 기능 점검 샘플 TC	TC_LAMP_027	M/F SW	1. (Initial_EngineOFF)	"1. (Wait(1000))
+2. (Lamp_LightSwSta = Off)"	"1. (CheckOverKPH(10))
+2. (Door_Status = UNLOCKED)"		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"				1. (Initial_EngineOFF)	"1. (Wait(1000))
+2. (Lamp_LightSwSta = Off)"	"1. (CheckOverKPH(10))
+2. (Door_Status = UNLOCKED)"
+MCU	제어기능	LAMP	Interior Lamp	REQ_LAMP_InteriorLamp_v1	Interior Lamp 기능 점검 샘플 TC	TC_LAMP_028	M/F SW		"1. (VehicleSpeed = 0)
+2. (Lamp_LightSwSta = On)"	"1. (Door_Status = LOCKED)
+2. (Lamp_PuddleLamp = Off)"		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"					"1. (VehicleSpeed = 0)
+2. (Lamp_LightSwSta = On)"	"1. (Door_Status = LOCKED)
+2. (Lamp_PuddleLamp = Off)"
+MCU	제어기능	WIPER	Rear Wiper	REQ_WIPER_RearWiper_v1	Rear Wiper 기능 점검 샘플 TC	TC_WIPER_029	M/F SW	1. (Initial_EngineON)	1. (VehicleSpeed = 100)	1. (Lamp_PuddleLamp = On)		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"				1. (Initial_EngineON)	1. (VehicleSpeed = 100)	1. (Lamp_PuddleLamp = On)
+ICU	제어기능	LAMP	Interior Lamp	REQ_LAMP_InteriorLamp_v1	Interior Lamp 기능 점검 샘플 TC	TC_LAMP_030	M/F SW	1. (Initial_EngineOFF)	"1. (VehicleSpeed = 50)
+2. (Wait(500))"	1. (Lamp_PuddleLamp = On)		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"				1. (Initial_EngineOFF)	"1. (VehicleSpeed = 50)
+2. (Wait(500))"	1. (Lamp_PuddleLamp = On)
+BDC (BCM)	제어기능	WIPER	Front Wiper	REQ_WIPER_FrontWiper_v1	Front Wiper 기능 점검 샘플 TC	TC_WIPER_031	M/F SW	1. (Initial_EngineON)	"1. (Lamp_LightSwSta = Off)
+2. (VehicleSpeed = 10)"	"1. (Door_Status = LOCKED)
+2. (CheckOverKPH(50))"		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"				1. (Initial_EngineON)	"1. (Lamp_LightSwSta = Off)
+2. (VehicleSpeed = 10)"	"1. (Door_Status = LOCKED)
+2. (CheckOverKPH(50))"
+MCU	제어기능	WIPER	Rear Wiper	REQ_WIPER_RearWiper_v1	Rear Wiper 기능 점검 샘플 TC	TC_WIPER_032	M/F SW	1. (Initial_EngineON)	"1. (Lamp_LightSwSta = On)
+2. (Wait(1000))"	"1. (Lamp_PuddleLamp = On)
+2. (CheckOverKPH(10))"		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"				1. (Initial_EngineON)	"1. (Lamp_LightSwSta = On)
+2. (Wait(1000))"	"1. (Lamp_PuddleLamp = On)
+2. (CheckOverKPH(10))"
+BDC (BCM)	제어기능	DOOR	Door Lock	REQ_DOOR_DoorLock_v1	Door Lock 기능 점검 샘플 TC	TC_DOOR_033	M/F SW		1. (Wait(1000))	"1. (Lamp_PuddleLamp = Off)
+2. (CheckOverKPH(50))"		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"					1. (Wait(1000))	"1. (Lamp_PuddleLamp = Off)
+2. (CheckOverKPH(50))"
+VCU	제어기능	DOOR	Power Window	REQ_DOOR_PowerWindow_v1	Power Window 기능 점검 샘플 TC	TC_DOOR_034	M/F SW		"1. (VehicleSpeed = 100)
+2. (5초 후 KEY_IN)
+3. (Lamp_LightSwSta = Off)"	"1. (Door_Status = LOCKED)
+2. (CheckOverKPH(10))"		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"					"1. (VehicleSpeed = 100)
+2. (5초 후 KEY_IN)
+3. (Lamp_LightSwSta = Off)"	"1. (Door_Status = LOCKED)
+2. (CheckOverKPH(10))"
+BDC (BCM)	제어기능	LAMP	Front Lamp	REQ_LAMP_FrontLamp_v1	Front Lamp 기능 점검 샘플 TC	TC_LAMP_035	M/F SW		"1. (Lamp_LightSwSta = On)
+2. (Wait(500))
+3. (VehicleSpeed = 0)"	"1. (CheckOverKPH(50))
+2. (Lamp_PuddleLamp = Off)"		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"					"1. (Lamp_LightSwSta = On)
+2. (Wait(500))
+3. (VehicleSpeed = 0)"	"1. (CheckOverKPH(50))
+2. (Lamp_PuddleLamp = Off)"
+BDC (BCM)	제어기능	LAMP	Front Lamp	REQ_LAMP_FrontLamp_v1	Front Lamp 기능 점검 샘플 TC	TC_LAMP_036	M/F SW	1. (Initial_EngineOFF)	"1. (Wait(1000))
+2. (Lamp_LightSwSta = On)"	"1. (CheckOverKPH(10))
+2. (Door_Status = UNLOCKED)"		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"				1. (Initial_EngineOFF)	"1. (Wait(1000))
+2. (Lamp_LightSwSta = On)"	"1. (CheckOverKPH(10))
+2. (Door_Status = UNLOCKED)"
+ICU	제어기능	LAMP	Front Lamp	REQ_LAMP_FrontLamp_v1	Front Lamp 기능 점검 샘플 TC	TC_LAMP_037	M/F SW		"1. (VehicleSpeed = 100)
+2. (Lamp_LightSwSta = On)
+3. (Wait(500))"	1. (Door_Status = LOCKED)		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"					"1. (VehicleSpeed = 100)
+2. (Lamp_LightSwSta = On)
+3. (Wait(500))"	1. (Door_Status = LOCKED)
+BDC (BCM)	제어기능	DOOR	Power Window	REQ_DOOR_PowerWindow_v1	Power Window 기능 점검 샘플 TC	TC_DOOR_038	M/F SW		"1. (Lamp_LightSwSta = Off)
+2. (VehicleSpeed = 10)
+3. (Wait(500))"	"1. (Door_Status = LOCKED)
+2. (CheckOverKPH(50))"		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"					"1. (Lamp_LightSwSta = Off)
+2. (VehicleSpeed = 10)
+3. (Wait(500))"	"1. (Door_Status = LOCKED)
+2. (CheckOverKPH(50))"
+BDC (BCM)	제어기능	LAMP	Rear Lamp	REQ_LAMP_RearLamp_v1	Rear Lamp 기능 점검 샘플 TC	TC_LAMP_039	M/F SW		"1. (Lamp_LightSwSta = On)
+2. (VehicleSpeed = 10)"	"1. (Door_Status = LOCKED)
+2. (Lamp_PuddleLamp = Off)"		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"					"1. (Lamp_LightSwSta = On)
+2. (VehicleSpeed = 10)"	"1. (Door_Status = LOCKED)
+2. (Lamp_PuddleLamp = Off)"
+VCU	제어기능	WIPER	Washer	REQ_WIPER_Washer_v1	Washer 기능 점검 샘플 TC	TC_WIPER_040	M/F SW		"1. (VehicleSpeed = 0)
+2. (Wait(500))"	1. (Lamp_PuddleLamp = On)		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"					"1. (VehicleSpeed = 0)
+2. (Wait(500))"	1. (Lamp_PuddleLamp = On)
+MCU	제어기능	WIPER	Rear Wiper	REQ_WIPER_RearWiper_v1	Rear Wiper 기능 점검 샘플 TC	TC_WIPER_041	M/F SW		"1. (Lamp_LightSwSta = On)
+2. (5초 후 KEY_IN)"	"1. (Door_Status = LOCKED)
+2. (CheckOverKPH(10))"		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"					"1. (Lamp_LightSwSta = On)
+2. (5초 후 KEY_IN)"	"1. (Door_Status = LOCKED)
+2. (CheckOverKPH(10))"
+ICU	제어기능	WIPER	Washer	REQ_WIPER_Washer_v1	Washer 기능 점검 샘플 TC	TC_WIPER_042	M/F SW	1. (Initial_EngineOFF)	1. (VehicleSpeed = 0)	"1. (Lamp_PuddleLamp = On)
+2. (CheckOverKPH(50))"		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"				1. (Initial_EngineOFF)	1. (VehicleSpeed = 0)	"1. (Lamp_PuddleLamp = On)
+2. (CheckOverKPH(50))"
+ICU	제어기능	WIPER	Rear Wiper	REQ_WIPER_RearWiper_v1	Rear Wiper 기능 점검 샘플 TC	TC_WIPER_043	M/F SW		"1. (Wait(1000))
+2. (VehicleSpeed = 0)
+3. (Lamp_LightSwSta = Off)"	1. (Lamp_PuddleLamp = Off)		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"					"1. (Wait(1000))
+2. (VehicleSpeed = 0)
+3. (Lamp_LightSwSta = Off)"	1. (Lamp_PuddleLamp = Off)
+BDC (BCM)	제어기능	LAMP	Rear Lamp	REQ_LAMP_RearLamp_v1	Rear Lamp 기능 점검 샘플 TC	TC_LAMP_044	M/F SW		"1. (Lamp_LightSwSta = Off)
+2. (VehicleSpeed = 50)"	1. (Door_Status = LOCKED)		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"					"1. (Lamp_LightSwSta = Off)
+2. (VehicleSpeed = 50)"	1. (Door_Status = LOCKED)
+VCU	제어기능	LAMP	Front Lamp	REQ_LAMP_FrontLamp_v1	Front Lamp 기능 점검 샘플 TC	TC_LAMP_045	M/F SW	1. (Initial_EngineON)	"1. (VehicleSpeed = 0)
+2. (5초 후 KEY_IN)
+3. (Lamp_LightSwSta = Off)"	"1. (Door_Status = UNLOCKED)
+2. (Lamp_PuddleLamp = Off)"		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"				1. (Initial_EngineON)	"1. (VehicleSpeed = 0)
+2. (5초 후 KEY_IN)
+3. (Lamp_LightSwSta = Off)"	"1. (Door_Status = UNLOCKED)
+2. (Lamp_PuddleLamp = Off)"
+ICU	제어기능	LAMP	Front Lamp	REQ_LAMP_FrontLamp_v1	Front Lamp 기능 점검 샘플 TC	TC_LAMP_046	M/F SW	1. (Initial_EngineON)	1. (Lamp_LightSwSta = On)	1. (Door_Status = UNLOCKED)		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"				1. (Initial_EngineON)	1. (Lamp_LightSwSta = On)	1. (Door_Status = UNLOCKED)
+BDC (BCM)	제어기능	DOOR	Power Window	REQ_DOOR_PowerWindow_v1	Power Window 기능 점검 샘플 TC	TC_DOOR_047	M/F SW	1. (Initial_EngineON)	1. (VehicleSpeed = 10)	1. (Lamp_PuddleLamp = Off)		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"				1. (Initial_EngineON)	1. (VehicleSpeed = 10)	1. (Lamp_PuddleLamp = Off)
+VCU	제어기능	LAMP	Front Lamp	REQ_LAMP_FrontLamp_v1	Front Lamp 기능 점검 샘플 TC	TC_LAMP_048	M/F SW		"1. (VehicleSpeed = 10)
+2. (5초 후 KEY_IN)
+3. (Lamp_LightSwSta = On)"	1. (Lamp_PuddleLamp = On)		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"					"1. (VehicleSpeed = 10)
+2. (5초 후 KEY_IN)
+3. (Lamp_LightSwSta = On)"	1. (Lamp_PuddleLamp = On)
+MCU	제어기능	WIPER	Front Wiper	REQ_WIPER_FrontWiper_v1	Front Wiper 기능 점검 샘플 TC	TC_WIPER_049	M/F SW		"1. (Lamp_LightSwSta = Off)
+2. (VehicleSpeed = 50)
+3. (Wait(1000))"	1. (Door_Status = LOCKED)		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"					"1. (Lamp_LightSwSta = Off)
+2. (VehicleSpeed = 50)
+3. (Wait(1000))"	1. (Door_Status = LOCKED)
+MCU	제어기능	DOOR	Door Lock	REQ_DOOR_DoorLock_v1	Door Lock 기능 점검 샘플 TC	TC_DOOR_050	M/F SW	1. (Initial_EngineON)	1. (Lamp_LightSwSta = On)	"1. (Door_Status = LOCKED)
+2. (CheckOverKPH(10))"		1.0	ALL			SIL			"[Cleanup]
+1. (Reset = OFF)"				1. (Initial_EngineON)	1. (Lamp_LightSwSta = On)	"1. (Door_Status = LOCKED)
+2. (CheckOverKPH(10))"

@@ -35,18 +35,19 @@
 
 #### 4) `generation_log` (추론 이력)
 - 생성된 스크립트와 당시 사용된 프롬프트를 저장합니다.
-- `id` (PK), `tc_id` (FK), `generated_code`, `prompt_used`, `created_at`
+- **Trace ID**를 연동하여 에러 발생 시 로그 파일(app.jsonl)과 추론 이력을 교차 추적할 수 있습니다.
+- `id` (PK), `trace_id` (UUID), `tc_id` (FK), `generated_code`, `prompt_used`, `created_at`
 
 ## 4. LLM과의 통합 아키텍처
 
 ```mermaid
 graph LR
     Input[TC 입력] --> Search[매핑 이력 검색 - MappingHistory]
-    Search -- "과거 매핑 사례 추출" --> Prompt[프롬프트 구성]
-    Prompt --> LLM[LLM 추론]
-    LLM --> Code[코드 생성]
-    Code --> UserReview[사용자 검토/승인]
-    UserReview -- "정답 데이터 저장" --> MappingHistory
+    Search -- 추출된 사례 --> Prompt[프롬프트 구성]
+    Prompt --> LLM_Inference[LLM 추론]
+    LLM_Inference --> Code[코드 생성]
+    Code --> UserReview[사용자 검토 및 승인]
+    UserReview -- 정답 데이터 저장 --> Mapping_History[(MappingHistory DB)]
 ```
 
 ## 5. 구현 가이드

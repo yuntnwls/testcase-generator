@@ -1,0 +1,3 @@
+T/Case ID	T/Case Title	검증 목적	시험 방법	Test Step	Expected Result
+TC_CONTROL_001	Door Control with Condition	차량 상태에 따른 도어 제어 확인	자연어 분석	차량 속도가 0이면 도어를 연다. 그렇지 않으면 경고를 발생시킨다.	Door opened OR Warning triggered
+TC_CONTROL_002	Emergency Light Loop	비상등 반복 동작 확인	자연어 분석	5번 동안 비상등(Hazard Light)을 켰다 껐다 반복한다.	Emergency lights blinked 5 times

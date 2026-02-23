@@ -6,8 +6,6 @@
 - 생성된 TestSuite.py에 add할 Testcase 작성 예시
     ```python
     def testcase1():
-    		simvasimva.enable_traceback()
-    		# traceback 활성화하고 시작하면 에러 출력 더 자세히 볼 수 있음
         simva.wait(1)
         simva.set_signal(signals.BDC.C_WPC_NFCReset_LCAN_BDC, 1)
         simva.reset_ecu(profiles.BDC)

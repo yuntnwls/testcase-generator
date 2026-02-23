@@ -1,0 +1,50 @@
+# ==========================================
+# Universal Test Script Generator - Config
+# ==========================================
+
+# 1. LLM Provider 설정 (의존성 주입 대상)
+llm:
+  # 사용 가능한 타입: "mock", "local", "openai", "gemini"
+  type: "local" 
+  max_retries: 3 # LLM Self-Correction 최대 재시도 횟수
+  
+  # Local CPU LLM 설정 (type이 'local'일 때 작동)
+  local:
+    endpoint: "http://localhost:11434/api/generate" # Ollama 기본 주소
+    model_name: "llama3" 
+    timeout_sec: 120
+    
+  # OpenAI / Gemini API 설정 (Production 용)
+  openai:
+    api_key: "${OPENAI_API_KEY}"
+    model_name: "gpt-4o"
+    temperature: 0.1
+    
+  gemini:
+    api_key: "${GEMINI_API_KEY}"
+    model_name: "gemini-1.5-pro"
+    temperature: 0.1
+
+# 2. Database (RAG) 설정
+database:
+  vector_db_path: "./data/vector_db"
+  ontology_path: "./data/mock_ontology_db.json"
+  similarity_threshold: 1.2 # 복합 문장(조건문 등) 대응을 위해 완화 (0.75 → 1.2)
+
+# 3. Target Adapter 설정 (Subprocess 실행 방식)
+target:
+  active_adapter: "simva" 
+  adapters:
+    simva:
+      executable_path: "./src/adapters/simva_adapter.py"
+      python_bin: "python" 
+
+# 4. UI 및 추적성(Traceability) 설정
+system:
+  log_level: "INFO" # DEBUG, INFO, WARNING, ERROR
+  ui_theme: "light" # light, dark
+  enable_progress_bar: true
+  
+  logging:
+    console_log_enabled: true
+    json_log_path: "./logs/app.jsonl"

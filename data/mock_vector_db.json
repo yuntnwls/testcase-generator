@@ -1,0 +1,95 @@
+[
+  {
+    "id": "sig_veh_spd",
+    "text": "속도, 차속, 엑셀, 가속, 감속, 브레이크 밟기, 시속, km/h, speed, velocity",
+    "metadata": {
+      "logical_name": "VehicleSpeed",
+      "data_type": "float",
+      "unit": "km/h",
+      "description": "차량의 주행 속도 제어"
+    }
+  },
+  {
+    "id": "sig_ign_sta",
+    "text": "엔진, 시동, 발동기, 켜다, 끄다, ignition, engine, start, stop, IGN",
+    "metadata": {
+      "logical_name": "Ignition_Status",
+      "data_type": "enum",
+      "allowed_values": [
+        "ON",
+        "OFF"
+      ],
+      "description": "차량 엔진 시동 상태 제어"
+    }
+  },
+  {
+    "id": "sig_hlmp_sta",
+    "text": "전조등, 헤드램프, 앞불, 라이트, 상향등, 하향등, headlamp, light, illumination",
+    "metadata": {
+      "logical_name": "HeadLamp_State",
+      "data_type": "enum",
+      "allowed_values": [
+        "OFF",
+        "LOW",
+        "HIGH"
+      ],
+      "description": "차량 전조등 조명 제어"
+    }
+  },
+  {
+    "id": "sig_door_sta",
+    "text": "문, 도어, 열림, 닫힘, 잠금, 해제, door, lock, unlock, open, close",
+    "metadata": {
+      "logical_name": "Door_Status",
+      "data_type": "enum",
+      "allowed_values": [
+        "OPEN",
+        "CLOSED",
+        "LOCKED",
+        "UNLOCKED"
+      ],
+      "description": "차량 도어 개폐 및 잠금 상태 제어"
+    }
+  },
+  {
+    "id": "sig_wiper_sta",
+    "text": "와이퍼, 유리닦이, 비, 눈, 워셔액, 작동, 정지, wiper, rain, washer",
+    "metadata": {
+      "logical_name": "Wiper_State",
+      "data_type": "enum",
+      "allowed_values": [
+        "OFF",
+        "LOW",
+        "HIGH",
+        "AUTO"
+      ],
+      "description": "앞유리 와이퍼 작동 상태"
+    }
+  },
+  {
+    "id": "sig_hazard_sw",
+    "text": "비상등, 해저드, 경광등, 긴급 깜빡이, 양방향 깜빡이, hazard, emergency light, blinker, flasher",
+    "metadata": {
+      "logical_name": "HazardLightSw",
+      "data_type": "enum",
+      "allowed_values": [
+        "ON",
+        "OFF"
+      ],
+      "description": "비상등(해저드 램프) 스위치 제어"
+    }
+  },
+  {
+    "id": "sig_warn_lamp",
+    "text": "경고, 알람, 경보, 위험, 알림, 경고등, warning, alarm, alert, danger",
+    "metadata": {
+      "logical_name": "WarningLamp",
+      "data_type": "enum",
+      "allowed_values": [
+        "ON",
+        "OFF"
+      ],
+      "description": "경고등/알람 상태 제어"
+    }
+  }
+]

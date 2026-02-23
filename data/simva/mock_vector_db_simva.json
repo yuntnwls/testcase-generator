@@ -1,0 +1,88 @@
+[
+    {
+        "id": "sig_trunk_tg",
+        "text": "트렁크 타입, 트렁크 사양, Trunk Type, EOL Trunk",
+        "metadata": {
+            "logical_name": "signals.BDC.E_EOL_TrunkTg",
+            "data_type": "enum",
+            "allowed_values": [
+                "q.EOL_Trunk_Type_TRUNK",
+                "q.EOL_Trunk_Type_LIFTGATE"
+            ],
+            "description": "차량 트렁크/리프트게이트 사양 설정"
+        }
+    },
+    {
+        "id": "sig_country",
+        "text": "국가 사양, 수출지역, 유럽, 국내, 북미, Country, Region",
+        "metadata": {
+            "logical_name": "signals.BDC.E_EOL_Country",
+            "data_type": "enum",
+            "allowed_values": [
+                "q.EUROPE",
+                "q.COMMON",
+                "q.MIDDLE_EAST",
+                "q.DOMESTIC",
+                "q.CANADA",
+                "q.USA"
+            ],
+            "description": "차량 출고 국가/지역 설정"
+        }
+    },
+    {
+        "id": "api_simva_core",
+        "text": "기본 제어 함수, set_signal, get_signal, wait, reset_ecu",
+        "metadata": {
+            "logical_name": "simva.set_signal, simva.get_signal, simva.wait, simva.reset_ecu",
+            "data_type": "core_api",
+            "description": "SIMVA의 가장 기본적인 신호 제어 및 대기 함수군"
+        }
+    },
+    {
+        "id": "api_simva_is_group",
+        "text": "단순 값 판정, 비교 함수, is_eq, is_ne, is_lt, is_gt, is_le, is_ge, is_btw_ex, is_btw_in",
+        "metadata": {
+            "logical_name": "simva.is_*",
+            "data_type": "check_api",
+            "description": "신호의 현재 값이 특정 조건(같음, 다름, 작음, 큼, 범위 내 등)을 만족하는지 즉시 검사합니다."
+        }
+    },
+    {
+        "id": "api_simva_turn_group",
+        "text": "기간 내 발생 여부 확인, turn_eq, turn_ne, turn_lt, turn_gt, turn_le, turn_ge, turn_btw_ex, turn_btw_in",
+        "metadata": {
+            "logical_name": "simva.turn_*",
+            "data_type": "check_api",
+            "params": "key, value, duration_sec",
+            "description": "일정 시간(duration_sec) 동안 신호 값이 특정 조건을 한 번이라도 만족한 적이 있는지 검사합니다."
+        }
+    },
+    {
+        "id": "api_simva_keep_group",
+        "text": "상태 유지 확인, keep_eq, keep_ne, keep_lt, keep_gt, keep_le, keep_ge, keep_btw_ex, keep_btw_in",
+        "metadata": {
+            "logical_name": "simva.keep_*",
+            "data_type": "check_api",
+            "params": "key, value, duration_sec",
+            "description": "일정 시간(duration_sec) 동안 신호 값이 특정 조건을 계속해서 만족하는지(유지되는지) 검사합니다."
+        }
+    },
+    {
+        "id": "api_simva_measuring",
+        "text": "측정 및 시계열 데이터, add_measuring, get_measuring_series, get_acquisition_series, start_acquisition",
+        "metadata": {
+            "logical_name": "simva.measuring_api",
+            "data_type": "measuring_api",
+            "description": "신호 측정 데이터를 추가하고 시계열 배열(Time, Value)을 가져오거나 캡처를 시작합니다."
+        }
+    },
+    {
+        "id": "api_simva_advanced",
+        "text": "고급 파형 및 상태 검증, pulsing, onoff_pulsing, keep_duration, set_acceleration, set_interrupt",
+        "metadata": {
+            "logical_name": "simva.advanced_api",
+            "data_type": "advanced_api",
+            "description": "펄싱 반복 점멸 검증, 특정 시간 유지 대입, 시뮬레이션 가속도 및 인터럽트 주기 설정 등 고급 제어 기능"
+        }
+    }
+]

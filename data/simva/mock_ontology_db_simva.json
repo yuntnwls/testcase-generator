@@ -1,0 +1,52 @@
+{
+    "relationships": [
+        {
+            "source": "signals.BDC.E_EOL_TrunkTg",
+            "relation": "PREREQUISITE_FOR_TEST",
+            "target": "q.EOL_Trunk_Type_TRUNK",
+            "description": "트렁크 사양이 TRUNK인 경우 리프트게이트 관련 테스트 케이스는 실행하지 않고 Early Return해야 함"
+        },
+        {
+            "source": "signals.BDC.E_EOL_Country",
+            "relation": "CONTROL_BRANCH",
+            "target": "[q.EUROPE, q.COMMON, q.MIDDLE_EAST]",
+            "description": "유럽/공용/중동 사양 여부에 따라 부저 및 비상등의 작동 횟수, 주기(Pulse)가 달라짐"
+        },
+        {
+            "source": "signals.BDC.E_SMK_RKECMD",
+            "relation": "REQUIRES_CONDITION",
+            "target": "signals.BDC.Ignition_Status == q.IGN_OFF",
+            "description": "RKE(무선키) 명령 수행을 위해서는 반드시 시동이 꺼져 있는 상태여야 함"
+        },
+        {
+            "source": "signals.BDC.VehicleSpeed",
+            "relation": "SAFETY_LOCK",
+            "target": "0.0",
+            "description": "도어 잠금/해제 및 특정 진단 리셋 기능은 차량 속도가 0인 정지 상태에서만 수행 가능"
+        },
+        {
+            "source": "precondition",
+            "relation": "MUST_START_WITH",
+            "target": "testcase",
+            "description": "모든 기능 테스트 시작 전에는 반드시 해당 기능의 전제 조건을 만족시키는 precondition 함수가 호출되어야 함"
+        },
+        {
+            "source": "cleanup",
+            "relation": "MUST_END_WITH",
+            "target": "testcase",
+            "description": "테스트 종료 후에는 차량 상태를 초기화하기 위해 반드시 cleanup 함수가 호출되어야 함"
+        },
+        {
+            "source": "signals.BDC.Pwm_P_ExternalBuzzer_OUT",
+            "relation": "SYNCHRONIZED_WITH",
+            "target": "signals.BDC.Lamp_HiPrioHzrdReq_BCAN1",
+            "description": "경보 발생 시 부저와 비상등은 특정 주기(Pulse)를 가지고 동시에 연동되어 작동함"
+        },
+        {
+            "source": "signals.BDC.E_EOL_DrHdl",
+            "relation": "DEPENDS_ON",
+            "target": "q.EOL_DoorHandleButton_ToggleTouch",
+            "description": "터치 타입 도어 핸들 사양인 경우에만 관련 센서 응답 확인 루프가 실행됨"
+        }
+    ]
+}

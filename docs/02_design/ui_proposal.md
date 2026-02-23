@@ -30,6 +30,8 @@
     - 엑셀/TSV 파일 드래그 앤 드롭 업로드.
     - 업로드된 내용 미리보기 (DataFrame).
     - [변환] 버튼 클릭 시 Python 스크립트 생성 및 다운로드.
+    - **실시간 진행률 표시**: Adapter 프로세스의 `stderr`(`[PROGRESS] M/N`)를 파싱하여 Streamlit Progress Bar 실시간 업데이트.
+    - **에러 추적**: 변환 실패 시 사용자에게 해당 작업의 고유 `Trace ID` 표출하여 로그 추적 지원.
 - **메인 탭 2: 수동 생성 (Manual Builder)**
     - 엑셀과 유사한 **Editable Data Processing Grid** 제공.
     - **자동완성 지원**: 'Signal Name' 입력 시 `Signal Registry`에서 검색된 유사 시그널 추천.
