@@ -31,6 +31,8 @@ LLM에 전달되는 전체 입력(Payload)은 크게 3가지 계층으로 나뉩
 - SET: 시그널 값을 변경할 때 (필드: logical_signal, value)
 - CHECK: 상태를 확인할 때 (필드: logical_signal, operator, expected_value, duration_sec)
 - WAIT: 대기할 때 (필드: duration_sec)
+- CONDITION: 조건부 실행 (필드: condition_text, condition_signal, condition_operator, condition_value, if_body, else_body)
+- LOOP: 반복 실행 (필드: count, body)
 - MACRO_CALL: 복합 함수를 호출할 때 (필드: macro_name)
 - UNKNOWN: 해석 불가 또는 논리적 오류 발생 시 (필드: reason)
 
@@ -38,6 +40,7 @@ LLM에 전달되는 전체 입력(Payload)은 크게 3가지 계층으로 나뉩
 1. 제공되는 [Context] 영역의 RAG(VectorDB/Ontology) 데이터를 최우선으로 신뢰하여 logical_signal을 선택할 것.
 2. 도메인 제약조건(Pre-condition)을 위반한 조작이 발견되면, 무리하게 SET으로 변환하지 말고 반드시 UNKNOWN 타입으로 분류하고 reason에 위반 사유를 명시할 것.
 3. 시그널 값(value)은 절대 딕셔너리 구조({"type": "int", "value": 10})를 쓰지 말고 원시 값을 직접 넣을 것. (예: enum 일 경우 해당 문자열로)
+4. (필수) "~인 경우", "~(하)면", "If"와 같은 조건절 표현이 있다면, 반드시 최상위 항목을 CONDITION 타입으로 분류하고 if_body에 수행할 동작을 넣을 것. 단순한 SET으로 오해하지 말 것.
 ```
 
 ---

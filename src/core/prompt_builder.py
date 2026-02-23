@@ -33,6 +33,7 @@ class PromptBuilder:
 5. 프롬프트 내의 안내용 헤더(예: ### Vector DB Match Results, [CONTEXT] 등) 명칭을 절대 실제 데이터(시그널 명 등)로 사용하지 마십시오. 적절한 시그널을 찾을 수 없다면 임의로 지어내지 말고 해당 단계를 UNKNOWN 유형으로 분류하십시오.
 6. 시그널 값(value)은 [CONTEXT]에 제공된 Data Type에 맞게 변환하십시오 (예: enum 일 경우 해당 문자열로).
 7. '발생시킨다', '출력한다', '경고를 준다', '알람을 발생시킨다' 등의 표현은 CONDITION이나 LOOP 내에서도 반드시 SET 또는 MACRO_CALL로 분류하십시오. 절대로 simva.warn(), simva.alert() 등 존재하지 않는 함수를 생성하지 마십시오. 시그널을 특정할 수 없다면 UNKNOWN으로 처리하십시오.
+8. (필수) 시작부분이나 중간에 "~인 경우", "~(하)면", "If"와 같은 조건절 표현이 있다면, 반드시 최상위 항목을 `CONDITION` 타입으로 분류하고 `if_body`에 수행할 동작을 넣으십시오. 조건(예: '시동 ON')을 단순한 SET(값 변경)으로 잘못 해석하지 마십시오.
 """
     
     @classmethod

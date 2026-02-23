@@ -1,94 +1,76 @@
 # PoC 테스트를 위한 Mock Data 설계 및 시나리오
 
-본 문서는 Vector DB와 Ontology의 기능(의미론적 검색 및 논리 검증)을 뚜렷하게 보여주기 위해 기획된 **종합 샘플 데이터(Mock Data)**와 이를 활용한 **검증 시나리오**를 정의합니다.
+본 문서는 실제 프로젝트에 구현된 Vector DB와 Ontology의 데이터셋을 기술하고, 이를 활용해 **복합 제어(Condition, Loop)** 및 **논리 검증**의 우수성을 증명하는 시연 시나리오를 정의합니다.
 
-## 1. 테스트용 Mock Data 규모 및 구성
+## 1. 실제 구현된 Mock Data 구성
 
-테스트(PoC)를 시각적으로 잘 보여주기 위해서는 너무 방대한 데이터보다는, 시스템이 겪을 수 있는 **다양한 예외 케이스**를 커버할 수 있는 15~20개 수준의 시그널과 5~10개의 관계망(Rule)이 적합합니다. 
+현재 `data/` 디렉토리에 구축된 실제 데이터셋 명세입니다.
 
-다음과 같은 4가지 핵심 도메인 그룹으로 데이터를 구성합니다.
+### 1-1. Vector DB 시그널 (7개 핵심 시그널)
 
-### 1-1. Vector DB 샘플 데이터 (총 15개 시그널)
+RAG 엔진은 사용자의 모호한 일상어를 아래 시그널로 정밀하게 매핑합니다.
 
-**A. 동력/오토모티브 코어 (주행 관련)**
-*   `Ignition_Status`: [엔진, 시동, 발동기, 켜다, 끄다, IGN]
-*   `VehicleSpeed`: [속도, 차속, 엑셀, 가속, 감속, 브레이크 밟기, km/h, 속력]
-*   `Gear_Position`: [기어, 변속기, P단, D단, R단, N단, 주차 모드, 주행 모드]
-*   `Battery_Voltage`: [배터리, 전압, 전원, 배터리 레벨, V]
+| ID | Logical Name | 주요 키워드 (Search Text) | 데이터 타입 | 설명 |
+|:---|:---|:---|:---|:---|
+| sig_veh_spd | `VehicleSpeed` | 속도, 차속, 엑셀, 가속, 감속, 브레이크, km/h | float | 차량 주행 속도 제어 |
+| sig_ign_sta | `Ignition_Status` | 엔진, 시동, 발동기, 켜다, 끄다, IGN, start | enum (ON, OFF) | 차량 엔진 시동 상태 |
+| sig_hlmp_sta | `HeadLamp_State` | 전조등, 헤드램프, 앞불, 라이트, 상/하향등 | enum (OFF, LOW, HIGH) | 전조등 조명 제어 |
+| sig_door_sta | `Door_Status` | 문, 도어, 열림, 닫힘, 잠금, 해제, lock, open | enum (OPEN, CLOSED, LOCKED) | 도어 개폐 및 잠금 |
+| sig_wiper_sta | `Wiper_State` | 와이퍼, 유리닦이, 비, 눈, 워셔액 | enum (OFF, LOW, HIGH, AUTO) | 와이퍼 작동 상태 |
+| sig_hazard_sw | `HazardLightSw` | 비상등, 해저드, 깜빡이, 긴급/양방향 깜빡이 | enum (ON, OFF) | 비상등 스위치 제어 |
+| sig_warn_lamp | `WarningLamp` | 경고, 알람, 경보, 위험, 알림, 경고등 | enum (ON, OFF) | 경고등/알람 상태 제어 |
 
-**B. 바디 제어 (조명 및 도어)**
-*   `HeadLamp_State`: [전조등, 헤드램프, 앞불, 라이트, 상향등, 하향등]
-*   `TurnSignal_Status`: [방향지시등, 깜빡이, 좌측 깜빡이, 우측 깜빡이, 턴시그널]
-*   `Door_Lock_Status`: [문, 도어, 잠금, 해제, 차문 닫기, 차문 열기]
-*   `Window_Position`: [창문, 윈도우, 열기, 닫기, 창문 내리기]
+### 1-2. Ontology (Knowledge Graph) 룰
 
-**C. 공조 시스템 (HVAC)**
-*   `HVAC_Power`: [에어컨, 히터, 공조기, 냉방, 난방, 전원]
-*   `Cabin_Temperature`: [온도, 실내 온도, 덥다, 춥다, 도, °C]
-*   `Blower_Speed`: [풍량, 바람 세기, 팬 속도, 강풍, 약풍]
+시그널 간의 물리적/논리적 제약 사항을 정의하여 LLM이 상식적인 코드를 생성하도록 유도합니다.
 
-**D. ADAS (첨단 운전자 보조)**
-*   `CruiseControl_State`: [크루즈 제어, 자동 주행, 정속 주행, CC]
-*   `LaneKeeping_State`: [차선 유지, LKA, 차선 이탈 방지]
-
-### 1-2. Ontology (Knowledge Graph) 샘플 룰 (총 7개 규칙)
-
-시그널 간의 연관 관계를 정의하여 LLM이 상식적으로 코드를 짜도록 유도합니다.
-
-1.  **[선행 조건]** `VehicleSpeed` (>0)를 조작하려면 `Ignition_Status` == `ON` 이어야 한다.
-2.  **[선행 조건]** `VehicleSpeed` (>0)를 조작하려면 `Gear_Position` == `D` 또는 `R` 이어야 한다.
-3.  **[선행 조건]** `Ignition_Status`를 `ON` 하려면 `Gear_Position` == `P` 이어야 한다. (급발진 방지)
-4.  **[충돌 방지]** `Door_Lock_Status` == `LOCK` 상태에서는 `Window_Position`을 조작할 수 없다. *(임의의 가상 룰)*
-5.  **[선행 조건]** `HVAC_Power`를 켜려면 `Ignition_Status` == `ON` 이어야 한다. (배터리 방전 방지)
-6.  **[제약 사항]** `CruiseControl_State`를 켜려면 `VehicleSpeed` 가 `30` 이상이어야 한다.
-7.  **[사이드 이펙트]** `HeadLamp_State`가 `HIGH` (상향등) 이면 `Battery_Voltage`의 소모량이 증가한다.
+1.  **[선행 조건]** `VehicleSpeed` 조작 시 `Ignition_Status == ON` 필수.
+2.  **[선행 조건]** `Wiper_State` 조작 시 `Ignition_Status == ON` 필수.
+3.  **[사이드 이팩트]** `HeadLamp_State` 조작 시 `Battery_Voltage` 감소 (분석용).
+4.  **[위험/Conflict]** `VehicleSpeed > 0` (주행 중) 상태에서 `Door_Status == OPEN` 금지.
 
 ---
 
-## 2. 시연(PoC)을 위한 4단계 데모 시나리오
+## 2. 복합 제어 데모 시나리오 (PoC)
 
-구축된 데이터를 기반으로, 아래 4가지 시나리오를 통해 시스템의 우수성을 증명할 수 있도록 설계합니다.
+구축된 데이터를 기반으로, 시스템이 **복잡한 논리 구조**를 어떻게 해석하는지 보여주는 데모 시나리오입니다.
 
-### 🍅 시나리오 1: 단순 동의어 처리 (Happy Path)
-- **사용자 입력**: `"엑셀을 밟아 시속 60으로 맞추고, 에어컨을 튼다."`
-- **Vector DB 결과**:
-  - "엑셀을 밟아 시속 60" -> `VehicleSpeed = 60` 매핑 (정확도 95%)
-  - "에어컨을 튼다" -> `HVAC_Power = ON` 매핑 (정확도 92%)
-- **핵심 포인트**: 표준 변수명을 몰라도 일상어로 스크립트를 생성함.
+### 🍅 시나리오 1: 복합 조건부 제어 (CONDITION)
+- **사용자 입력**: `"차량 속도가 10 km/h 이상이면 도어를 잠그고, 그렇지 않으면 도어를 해제한다."`
+- **RAG 분석**:
+  - "차량 속도" -> `VehicleSpeed` 매핑
+  - "도어 잠금" -> `Door_Status = LOCKED` 매핑
+  - "도어 해제" -> `Door_Status = UNLOCKED` 매핑
+- **LLM 해석**: `CONDITION` 타입을 최상위로 두고, `if_body`와 `else_body`에 각각 `SET` 동작을 분배하여 생성.
+- **핵심 포인트**: 자연어 조건절을 프로그래밍 논리 구조로 정확히 변환.
 
-### 🍅 시나리오 2: 은어/신조어 처리 (Ambiguity Resolution)
-- **사용자 입력**: `"우측 깜빡이 비상등 켜고 풀악셀 친다."`
-- **Vector DB 결과**:
-  - "풀악셀 친다" -> `VehicleSpeed = MAX` (가장 유사한 속도 관련 시그널로 맵핑)
-  - "깜빡이 비상등" -> `TurnSignal_Status = RIGHT` 매핑
-- **핵심 포인트**: 사전에 정확히 매핑되지 않은 슬랭(Slang)도 임베딩 유사도를 통해 가장 근접한 시그널을 찾아냄.
+### 🍅 시나리오 2: 반복 동작 및 시간 대기 (LOOP + WAIT)
+- **사용자 입력**: `"와이퍼를 LOW로 설정하고 2초 대기하는 동작을 3회 반복한다."`
+- **RAG 분석**:
+  - "와이퍼 LOW" -> `Wiper_State = LOW`
+- **LLM 해석**: `LOOP` 컨테이너(count=3) 내부에 `SET`과 `WAIT` 동작을 순차적으로 배치.
+- **핵심 포인트**: 단순 스텝 나열이 아닌 '제어 구조'를 이해하여 효율적인 코드 생성.
 
-### 🍅 시나리오 3: 온톨로지 제약 조건 방어 (Pre-condition Check)
-- **사용자 입력 (Step 1)**: `"차량에 탑승한다."`
-- **사용자 입력 (Step 2)**: `"바로 기어를 D로 바꾸고 주행한다."`
-- **Ontology 검증 결과**:
-  - `VehicleSpeed` 조작 전 `Ignition_Status == ON` 룰 위반 발견. (시동을 안 켬)
-- **LLM의 자동 보정 (코드 생성)**:
-  - LLM이 코드를 생성할 때, 주행(D단) 변경 직전에 `simva.set_signal("Ignition_Status", "ON")`을 **스스로 추가**하거나,
-  - 코드 상단에 `# WARNING: 시동(Ignition) 켜기 스텝이 누락되어 자동 추가됨` 이라는 주석을 달아줌.
-- **핵심 포인트**: 단순 번역기가 아닌 도메인 오라클(Oracle) 역할을 수행함.
+### 🍅 시나리오 3: 은어 처리 및 RAG 매핑 (Ambiguity)
+- **사용자 입력**: `"풀악셀 밟고 긴급 깜빡이 켜!"`
+- **RAG 분석**:
+  - "풀악셀" -> `VehicleSpeed` (유사도 기반 매핑)
+  - "긴급 깜빡이" -> `HazardLightSw = ON`
+- **핵심 포인트**: 도메인 특화 용어가 아닌 일상어/은어도 임베딩 유사도를 통해 정확한 시그널로 연결함.
 
-### 🍅 시나리오 4: 상호 배타적/위험 로직 경고 (Conflict Detection)
-- **사용자 입력 (Step 1)**: `"기어를 P로 놓는다."`
-- **사용자 입력 (Step 2)**: `"크루즈 컨트롤(CC)을 켠다."`
-- **Ontology 검증 결과**:
-  - `CruiseControl_State` == `ON` 의 선행 조건(`VehicleSpeed >= 30` 및 주행 상태) 위반.
-- **LLM의 방어 로직**:
-  - 해당 스텝에 대해 코드를 생성하지 않고 `UNKNOWN/ERROR` IR로 분류.
-  - 리포트 출력: `# ERROR: 주차(P) 상태에서는 크루즈 컨트롤을 활성화할 수 없습니다.`
-- **핵심 포인트**: 잘못 작성된 TC(휴먼 에러)를 시스템이 사전에 차단함.
+### 🍅 시나리오 4: 논리적 결함 방어 (Fault Protection)
+- **사용자 입력**: `"시동이 꺼진 상태에서 와이퍼를 가장 빠르게 돌려라."`
+- **Ontology 검증**:
+  - `Wiper_State` 조작 전 `Ignition_Status == ON` 조건 미충족 감지.
+- **LLM 대응**: 
+  - `UNKNOWN` IR로 분류하여 실행 중단 및 사유 명시 (`reason: "Wiper requires Ignition ON"`).
+  - 또는 `# WARNING` 주석과 함께 선행 동작(`Ignition ON`) 코드를 자동 삽입.
+- **핵심 포인트**: 물리적으로 불가능한 테스트 스크립트 생성을 사전에 방지.
 
 ---
 
-## 3. 구현 단계에서의 적용 계획
+## 3. 적용 및 테스트 방법
 
-위 데이터들은 구현(Phase 2) 단계가 시작되면 다음과 같이 적용될 예정입니다.
-
-1. **JSON 파일 생성**: `rag_mock_signals.json` 및 `rag_mock_rules.json` 파일 생성.
-2. **벡터화 스크립트 작성**: 위 JSON의 `text` 배열을 순회하며 `sentence-transformers`를 이용해 임베딩을 추출하고 로컬 ChromaDB에 덤프하는 파이썬 스크립트(`init_db.py`) 작성.
-3. **데모 UI 구성**: Streamlit UI 좌측 사이드바에 **"시나리오 1,2,3,4 자동 입력 버튼"**을 만들어 클릭 한 번으로 테스트가 실행되도록 구성.
+1.  **데이터 로드**: `CoreEngine` 구동 시 `data/mock_vector_db.json`을 읽어 ChromaDB를 초기화합니다.
+2.  **테스트 실행**: `tests/integration/test_control_tc_local_llm.py`를 실행하여 위 시나리오들이 실제 IR로 변환되는지 검증합니다.
+3.  **UI 시연**: Streamlit 화면에서 위 시나리오 텍스트를 입력하여 생성된 Python 코드의 품질을 육안으로 확인합니다.
