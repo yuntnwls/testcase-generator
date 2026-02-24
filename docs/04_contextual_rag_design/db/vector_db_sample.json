@@ -1,0 +1,118 @@
+{
+    "_comment": "Contextual RAG Vector DB 예시 데이터 (방안 C)",
+    "_note": "이 파일은 scripts/build_vector_db.py를 통해 ChromaDB로 인덱싱됩니다. context_prefix는 오프라인 배치 시 LLM이 자동 생성합니다.",
+    "_schema_ref": "db/01_vector_db_design.md",
+    "collection": "simva_templates",
+    "records": [
+        {
+            "id": "action_set_signal",
+            "type": "ACTION",
+            "context_prefix": "차량 내 특정 ECU 신호의 상태값을 새로운 값으로 변경하는 할당 동작. 도어 잠금, 와이퍼, 램프, 시트, 창문 등 모든 제어 시그널에 광범위하게 적용된다. if/loop 내부 하위 액션으로도 빈번히 중첩 사용된다.",
+            "type_source": "{signal}를 {value}로 설정한다",
+            "vector_source": "차량 내 특정 ECU 신호의 상태값을 새로운 값으로 변경하는 할당 동작...\n\n{signal}를 {value}로 설정한다",
+            "regex_pattern": "^.*?(?P<signal>[a-zA-Z가-힣0-9_\\s]+?)(?:을|를|은|는)?\\s+(?P<value>[a-zA-Z0-9가-힣_\\s\\.]+?)(?:으로|로|에)?\\s+(?:설정|세팅|변경|바꿔|켜|꺼|작동).*$",
+            "variables": "[\"signal\", \"value\"]",
+            "target_code": "simva.set_signal(signals.{ecu}.{signal}, \"{value}\")"
+        },
+        {
+            "id": "action_wait_seconds",
+            "type": "TYPE_WAIT",
+            "context_prefix": "설정된 시간(초 단위)만큼 테스트 실행을 일시 중지하는 대기 동작. 상태 변화 전 안정화 시간 부여, 이벤트 간 딜레이 삽입에 사용됨. '대기', '기다려라', 'wait', '초 후에' 등 다양한 표현으로 지칭된다.",
+            "type_source": "{duration}초 대기한다",
+            "vector_source": "설정된 시간만큼 테스트 실행을 일시 중지하는 대기 동작...\n\n{duration}초 대기한다",
+            "regex_pattern": "^.*?(?P<duration>[0-9]+(?:\\.[0-9]+)?)\\s*(?:초|s|sec)?\\s*(?:대기|기다|wait|후|뒤).*$",
+            "variables": "[\"duration\"]",
+            "target_code": "simva.wait({duration})"
+        },
+        {
+            "id": "action_wait_milliseconds",
+            "type": "TYPE_WAIT",
+            "context_prefix": "밀리초(ms) 단위의 짧은 대기를 수행하는 동작. 센서 응답이나 통신 딜레이처럼 1초 미만의 정밀한 타이밍 제어가 필요할 때 사용된다. 'ms', '밀리초', '밀리세컨드' 등으로 표현된다.",
+            "type_source": "{duration}ms 대기한다",
+            "vector_source": "밀리초 단위의 짧은 대기를 수행하는 동작...\n\n{duration}ms 대기한다",
+            "regex_pattern": "^.*?(?P<duration>[0-9]+(?:\\.[0-9]+)?)\\s*(?:ms|밀리초|밀리세컨드)\\s*(?:대기|기다|wait).*$",
+            "variables": "[\"duration\"]",
+            "target_code": "simva.wait({duration} / 1000)"
+        },
+        {
+            "id": "check_signal_eq",
+            "type": "TYPE_CHECK",
+            "context_prefix": "특정 시그널의 현재 값이 기대값과 일치하는지 확인하는 판정 동작. 테스트의 Pass/Fail 기준을 결정하며, Expected Result 컬럼에서 주로 사용된다. '이어야 한다', '확인', 'verify', '검증' 등 표현을 인식한다.",
+            "type_source": "{signal}이 {value}이어야 한다",
+            "vector_source": "특정 시그널의 현재 값이 기대값과 일치하는지 확인하는 판정 동작...\n\n{signal}이 {value}이어야 한다",
+            "regex_pattern": "^.*?(?P<signal>[a-zA-Z가-힣0-9_\\s]+?)(?:이|가|은|는)?\\s+(?P<value>[a-zA-Z0-9가-힣_\\s\\.]+?)(?:이어야|여야|이|가|으로)\\s*(?:한다|됩니다|됨|확인|검증).*$",
+            "variables": "[\"signal\", \"value\"]",
+            "target_code": "result = simva.is_eq(signals.{ecu}.{signal}, \"{value}\")"
+        },
+        {
+            "id": "check_signal_range",
+            "type": "TYPE_CHECK",
+            "context_prefix": "특정 시그널의 값이 정해진 범위(최솟값~최댓값) 내에 있는지 확인하는 범위 판정 동작. 'N 이상 M 이하', '~사이', 'between' 등의 표현으로 지칭된다. 속도, 전압, 온도 등 수치 범위 검증에 사용된다.",
+            "type_source": "{signal}이 {min}에서 {max} 사이이어야 한다",
+            "vector_source": "특정 시그널의 값이 범위 내에 있는지 확인하는 범위 판정 동작...\n\n{signal}이 {min}에서 {max} 사이이어야 한다",
+            "regex_pattern": "^.*?(?P<signal>[a-zA-Z가-힣0-9_\\s]+?)(?:이|가)?\\s+(?P<min>[0-9.]+)\\s*(?:에서|~|이상)?\\s*(?P<max>[0-9.]+)\\s*(?:사이|이하|미만).*$",
+            "variables": "[\"signal\", \"min\", \"max\"]",
+            "target_code": "result = simva.is_between(signals.{ecu}.{signal}, {min}, {max})"
+        },
+        {
+            "id": "action_keep_signal",
+            "type": "TYPE_WAIT",
+            "context_prefix": "특정 시그널이 목표 값으로 일정 시간 동안 유지되는지 확인하며 대기하는 동작. 단순 대기와 달리 유지 조건이 포함된다. '~상태 유지', '~동안 유지', 'keep', '지속' 등 표현을 인식한다.",
+            "type_source": "{signal}이 {value} 상태로 {duration}초 유지된다",
+            "vector_source": "특정 시그널이 목표 값으로 일정 시간 유지되는지 확인하며 대기하는 동작...\n\n{signal}이 {value} 상태로 {duration}초 유지된다",
+            "regex_pattern": "^.*?(?P<signal>[a-zA-Z가-힣0-9_\\s]+?)(?:이|가)?\\s+(?P<value>[a-zA-Z0-9가-힣_\\s]+?)\\s*(?:상태로|으로|로)?\\s*(?P<duration>[0-9.]+)\\s*(?:초|s)\\s*(?:유지|keep|지속).*$",
+            "variables": "[\"signal\", \"value\", \"duration\"]",
+            "target_code": "result = simva.keep_eq(signals.{ecu}.{signal}, \"{value}\", {duration})"
+        },
+        {
+            "id": "action_init_scenario",
+            "type": "TYPE_INIT",
+            "context_prefix": "테스트 시나리오 시작 전 시스템을 초기 상태(기본값)로 리셋하는 초기화 동작. '초기화', '리셋', '기본 상태로', 'initialize', 'reset' 등 표현으로 지칭된다. 모든 테스트 케이스의 첫 번째 스텝으로 주로 사용된다.",
+            "type_source": "시나리오를 초기화한다",
+            "vector_source": "테스트 시나리오 시작 전 시스템을 초기 상태로 리셋하는 초기화 동작...\n\n시나리오를 초기화한다",
+            "regex_pattern": "^.*?(?:시나리오|시스템|환경)?\\s*(?:초기화|리셋|reset|initialize).*$",
+            "variables": "[]",
+            "target_code": "simva.initialize_scenario()"
+        },
+        {
+            "id": "meta_condition_ifelse",
+            "type": "META_CONTROL_IFELSE",
+            "context_prefix": "조건에 따라 두 가지 동작 중 하나를 선택 실행하는 분기 제어 구조. '~이면 ~한다. 그렇지 않으면 ~한다' 패턴을 인식한다. 내부 조건식과 각 Action은 재귀적으로 별도 파싱되므로 이 템플릿은 구조 뼈대만 담당한다.",
+            "type_source": "{condition}이면 {true_action}한다. 그렇지 않으면 {false_action}한다",
+            "vector_source": "조건에 따라 두 가지 동작 중 하나를 선택 실행하는 분기 제어 구조...\n\n{condition}이면 {true_action}한다. 그렇지 않으면 {false_action}한다",
+            "regex_pattern": "^(?P<condition>.+?)(?:이?면|인\\s*경우)\\s+(?P<true_action>.+?)(?:한다)[\\.\\s]*(?:그렇지\\s*않으면|else)\\s+(?P<false_action>.+?)(?:한다)$",
+            "variables": "[\"condition\", \"true_action\", \"false_action\"]",
+            "target_code": "if {condition}:\n    {true_action}\nelse:\n    {false_action}"
+        },
+        {
+            "id": "meta_condition_if_only",
+            "type": "META_CONTROL_IFELSE",
+            "context_prefix": "조건이 참일 경우에만 특정 동작을 실행하는 단순 조건 분기 구조. else 없이 if만 있는 패턴을 인식한다. '~이면 ~한다', '~인 경우 ~를 수행' 등의 표현으로 지칭된다.",
+            "type_source": "{condition}이면 {true_action}한다",
+            "vector_source": "조건이 참일 경우에만 특정 동작을 실행하는 단순 조건 분기 구조...\n\n{condition}이면 {true_action}한다",
+            "regex_pattern": "^(?P<condition>.+?)(?:이?면|인\\s*경우)\\s+(?P<true_action>.+?)(?:한다)$",
+            "variables": "[\"condition\", \"true_action\"]",
+            "target_code": "if {condition}:\n    {true_action}"
+        },
+        {
+            "id": "meta_control_loop",
+            "type": "META_CONTROL_LOOP",
+            "context_prefix": "지정된 횟수만큼 동일한 동작을 반복 실행하는 루프 제어 구조. '~N번 반복', '~회 실시', 'N회 반복해서' 등의 표현을 인식한다. 내부 반복 Action은 재귀적으로 별도 파싱된다.",
+            "type_source": "{action}동작을 {count}번 반복한다",
+            "vector_source": "지정된 횟수만큼 동일한 동작을 반복 실행하는 루프 제어 구조...\n\n{action}동작을 {count}번 반복한다",
+            "regex_pattern": "^(?P<action>.+?)(?:\\s*동작을?)?\\s+(?P<count>[0-9]+)(?:번|회|times)\\s+반복.*$",
+            "variables": "[\"count\", \"action\"]",
+            "target_code": "for i in range({count}):\n    {action}"
+        },
+        {
+            "id": "action_compare_expression",
+            "type": "ACTION",
+            "context_prefix": "두 시그널 값 또는 시그널과 상수를 비교하는 조건식 표현. if/else 조건 절 내부에서 사용되며 단독 사용되지 않는다. '~이상', '~이하', '초과', '미만', '같다', '같지 않다' 등의 비교 연산자를 인식한다.",
+            "type_source": "{signal}이 {value} {op}이다",
+            "vector_source": "두 시그널 값 또는 시그널과 상수를 비교하는 조건식 표현...\n\n{signal}이 {value} {op}이다",
+            "regex_pattern": "^.*?(?P<signal>[a-zA-Z가-힣0-9_\\s]+?)(?:이|가)?\\s+(?P<value>[a-zA-Z0-9가-힣_\\s\\.]+?)\\s*(?P<op>이상|이하|초과|미만|같다|같지\\s*않다|equal|greater|less).*$",
+            "variables": "[\"signal\", \"value\", \"op\"]",
+            "target_code": "signals.{ecu}.{signal} {op} {value}"
+        }
+    ]
+}

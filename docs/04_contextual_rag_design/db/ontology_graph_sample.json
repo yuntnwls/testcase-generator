@@ -1,0 +1,647 @@
+{
+    "_comment": "Contextual RAG Ontology DB 예시 데이터 (방안 C)",
+    "_note": "이 파일은 런타임에 NetworkX DiGraph로 로드됩니다. 신규 차종 추가는 scripts/ingest_variant.py를 사용하세요.",
+    "_schema_ref": "db/02_ontology_db_design.md",
+    "nodes": [
+        {
+            "id": "Variant:CarModel_A",
+            "node_type": "variant",
+            "label": "Car Model A",
+            "description": "2023년형 내연기관 기반 세단 모델. ADCU 기반 주행 제어 아키텍처."
+        },
+        {
+            "id": "Variant:CarModel_B",
+            "node_type": "variant",
+            "label": "Car Model B",
+            "description": "2024년형 전기차 기반 SUV 모델. CGW 중앙 게이트웨이 아키텍처."
+        },
+        {
+            "id": "Concept:VehicleSpeed",
+            "node_type": "concept",
+            "label": "차량 속도",
+            "description": "차량의 현재 주행 속도. 안전 기능, 도어 잠금 조건 등 다양한 제어 로직에서 참조됨.",
+            "synonyms": [
+                "차속",
+                "속도",
+                "스피드",
+                "vehicle speed",
+                "v_speed",
+                "현재속도",
+                "주행속도",
+                "km/h"
+            ],
+            "unit": "km/h",
+            "data_type": "float32",
+            "value_range": {
+                "min": 0,
+                "max": 260
+            },
+            "enum_ref": null
+        },
+        {
+            "id": "Concept:IG_Status",
+            "node_type": "concept",
+            "label": "IG 상태",
+            "description": "점화 스위치(Ignition) 상태. 차량 전원 공급 상태를 나타내며 대부분의 ECU 기능 활성화 전제 조건.",
+            "synonyms": [
+                "IG",
+                "점화",
+                "이그니션",
+                "ignition",
+                "시동",
+                "전원 상태",
+                "key",
+                "키"
+            ],
+            "unit": null,
+            "data_type": "boolean",
+            "value_range": null,
+            "enum_ref": "Enum:OnOff_Values"
+        },
+        {
+            "id": "Concept:DoorLock_FL",
+            "node_type": "concept",
+            "label": "운전석 도어 잠금",
+            "description": "운전석(Front Left) 도어 잠금 상태. 차속 조건에 따라 자동 잠금 기능 연동.",
+            "synonyms": [
+                "도어잠금",
+                "운전석잠금",
+                "door lock",
+                "FL도어",
+                "운전자측도어",
+                "좌측앞도어잠금"
+            ],
+            "unit": null,
+            "data_type": "uint8",
+            "value_range": null,
+            "enum_ref": "Enum:DoorLock_Values"
+        },
+        {
+            "id": "Concept:Wiper_Speed",
+            "node_type": "concept",
+            "label": "와이퍼 속도",
+            "description": "전면 와이퍼의 작동 속도 단계. 0=정지, 1=저속, 2=고속, 3=간헐적으로 구분됨.",
+            "synonyms": [
+                "와이퍼",
+                "wiper",
+                "앞유리 와이퍼",
+                "와이퍼속도",
+                "와이퍼 단계"
+            ],
+            "unit": null,
+            "data_type": "uint8",
+            "value_range": null,
+            "enum_ref": "Enum:Wiper_Levels"
+        },
+        {
+            "id": "Concept:Headlamp_Left",
+            "node_type": "concept",
+            "label": "좌측 헤드램프",
+            "description": "차량 좌측 전조등 상태. 하향등/상향등/소등으로 구분 제어됨.",
+            "synonyms": [
+                "좌측헤드램프",
+                "헤드라이트좌",
+                "left headlight",
+                "FL lamp",
+                "운전석헤드램프"
+            ],
+            "unit": null,
+            "data_type": "uint8",
+            "value_range": null,
+            "enum_ref": "Enum:Headlamp_Modes"
+        },
+        {
+            "id": "Concept:AccelPedal",
+            "node_type": "concept",
+            "label": "가속 페달",
+            "description": "가속 페달의 현재 위치 비율(0~100%). 스로틀 제어 및 주행 저항 계산에 사용됨.",
+            "synonyms": [
+                "악셀",
+                "가속페달",
+                "액셀",
+                "accelerator",
+                "스로틀",
+                "accel",
+                "엑셀"
+            ],
+            "unit": "%",
+            "data_type": "float32",
+            "value_range": {
+                "min": 0,
+                "max": 100
+            },
+            "enum_ref": null
+        },
+        {
+            "id": "Physical:ADCU_V_Speed",
+            "node_type": "physical",
+            "label": "ADCU_V_Speed",
+            "ecu": "ADCU",
+            "signal_id": "V_Speed",
+            "dbc_message_id": "0x200",
+            "data_type": "uint16",
+            "unit": "km/h",
+            "scaling": {
+                "factor": 0.01,
+                "offset": 0
+            }
+        },
+        {
+            "id": "Physical:CGW_VehicleSpeed",
+            "node_type": "physical",
+            "label": "CGW_VehicleSpeed",
+            "ecu": "CGW",
+            "signal_id": "VehicleSpeed",
+            "dbc_message_id": "0x100",
+            "data_type": "uint16",
+            "unit": "km/h",
+            "scaling": {
+                "factor": 0.01,
+                "offset": 0
+            }
+        },
+        {
+            "id": "Physical:BCM_IG_Status",
+            "node_type": "physical",
+            "label": "BCM_IG_Status",
+            "ecu": "BCM",
+            "signal_id": "IG_Status",
+            "dbc_message_id": "0x050",
+            "data_type": "boolean",
+            "unit": null,
+            "scaling": null
+        },
+        {
+            "id": "Physical:BCM_DoorLock_FL",
+            "node_type": "physical",
+            "label": "BCM_DoorLock_FL",
+            "ecu": "BCM",
+            "signal_id": "DoorLock_FL",
+            "dbc_message_id": "0x120",
+            "data_type": "uint8",
+            "unit": null,
+            "scaling": null
+        },
+        {
+            "id": "Physical:BCM_Wiper_Speed",
+            "node_type": "physical",
+            "label": "BCM_Wiper_Speed",
+            "ecu": "BCM",
+            "signal_id": "Wiper_Speed",
+            "dbc_message_id": "0x130",
+            "data_type": "uint8",
+            "unit": null,
+            "scaling": null
+        },
+        {
+            "id": "Physical:BCM_Headlamp_Left",
+            "node_type": "physical",
+            "label": "BCM_Headlamp_Left",
+            "ecu": "BCM",
+            "signal_id": "Headlamp_Left",
+            "dbc_message_id": "0x140",
+            "data_type": "uint8",
+            "unit": null,
+            "scaling": null
+        },
+        {
+            "id": "Physical:ADCU_AccelPedal",
+            "node_type": "physical",
+            "label": "ADCU_AccelPedal",
+            "ecu": "ADCU",
+            "signal_id": "AccelPedal_Position",
+            "dbc_message_id": "0x210",
+            "data_type": "float32",
+            "unit": "%",
+            "scaling": {
+                "factor": 0.1,
+                "offset": 0
+            }
+        },
+        {
+            "id": "Enum:OnOff_Values",
+            "node_type": "enum",
+            "label": "ON/OFF 공통 열거형",
+            "concept_ref": "Concept:IG_Status",
+            "values": [
+                {
+                    "raw": 0,
+                    "official": "OFF",
+                    "synonyms": [
+                        "꺼짐",
+                        "비활성",
+                        "꺼",
+                        "off",
+                        "비활성화"
+                    ]
+                },
+                {
+                    "raw": 1,
+                    "official": "ON",
+                    "synonyms": [
+                        "켜짐",
+                        "활성",
+                        "켜",
+                        "on",
+                        "활성화",
+                        "작동"
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "Enum:DoorLock_Values",
+            "node_type": "enum",
+            "label": "도어 잠금 상태 열거형",
+            "concept_ref": "Concept:DoorLock_FL",
+            "values": [
+                {
+                    "raw": 0,
+                    "official": "UNLOCKED",
+                    "synonyms": [
+                        "열림",
+                        "해제",
+                        "잠금해제",
+                        "unlock",
+                        "open"
+                    ]
+                },
+                {
+                    "raw": 1,
+                    "official": "LOCKED",
+                    "synonyms": [
+                        "잠김",
+                        "잠금",
+                        "잠겨있음",
+                        "lock",
+                        "closed"
+                    ]
+                },
+                {
+                    "raw": 2,
+                    "official": "AJAR",
+                    "synonyms": [
+                        "반열림",
+                        "미완전",
+                        "덜닫힘",
+                        "ajar"
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "Enum:Wiper_Levels",
+            "node_type": "enum",
+            "label": "와이퍼 속도 단계 열거형",
+            "concept_ref": "Concept:Wiper_Speed",
+            "values": [
+                {
+                    "raw": 0,
+                    "official": "OFF",
+                    "synonyms": [
+                        "정지",
+                        "꺼짐",
+                        "off"
+                    ]
+                },
+                {
+                    "raw": 1,
+                    "official": "LOW",
+                    "synonyms": [
+                        "저속",
+                        "1단",
+                        "느리게",
+                        "low"
+                    ]
+                },
+                {
+                    "raw": 2,
+                    "official": "HIGH",
+                    "synonyms": [
+                        "고속",
+                        "2단",
+                        "빠르게",
+                        "high",
+                        "최대"
+                    ]
+                },
+                {
+                    "raw": 3,
+                    "official": "INTERVAL",
+                    "synonyms": [
+                        "간헐",
+                        "3단",
+                        "간격",
+                        "intermittent"
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "Enum:Headlamp_Modes",
+            "node_type": "enum",
+            "label": "헤드램프 모드 열거형",
+            "concept_ref": "Concept:Headlamp_Left",
+            "values": [
+                {
+                    "raw": 0,
+                    "official": "OFF",
+                    "synonyms": [
+                        "꺼짐",
+                        "소등",
+                        "off",
+                        "끄기"
+                    ]
+                },
+                {
+                    "raw": 1,
+                    "official": "LOW",
+                    "synonyms": [
+                        "하향등",
+                        "로빔",
+                        "low beam",
+                        "하이빔아님"
+                    ]
+                },
+                {
+                    "raw": 2,
+                    "official": "HIGH",
+                    "synonyms": [
+                        "상향등",
+                        "원거리등",
+                        "high beam",
+                        "하이빔"
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "Constraint:IG_Required",
+            "node_type": "constraint",
+            "label": "IG ON 선행 조건",
+            "description": "이 시그널을 조작하기 전에 IG(Ignition) 상태가 ON이어야 합니다. 그렇지 않으면 ECU 응답 없음.",
+            "check_signal": "Concept:IG_Status",
+            "required_value": "ON",
+            "severity": "WARNING"
+        },
+        {
+            "id": "Constraint:Speed_Zero",
+            "node_type": "constraint",
+            "label": "차량 정차 선행 조건",
+            "description": "이 시그널 조작 전 차량 속도가 0 km/h이어야 합니다. 주행 중 조작 금지.",
+            "check_signal": "Concept:VehicleSpeed",
+            "required_value": 0,
+            "severity": "ERROR"
+        }
+    ],
+    "edges": [
+        {
+            "source": "Physical:ADCU_V_Speed",
+            "relation": "represents",
+            "target": "Concept:VehicleSpeed",
+            "context": null
+        },
+        {
+            "source": "Physical:CGW_VehicleSpeed",
+            "relation": "represents",
+            "target": "Concept:VehicleSpeed",
+            "context": null
+        },
+        {
+            "source": "Concept:VehicleSpeed",
+            "relation": "implemented_by",
+            "target": "Physical:ADCU_V_Speed",
+            "context": "Variant:CarModel_A"
+        },
+        {
+            "source": "Concept:VehicleSpeed",
+            "relation": "implemented_by",
+            "target": "Physical:CGW_VehicleSpeed",
+            "context": "Variant:CarModel_B"
+        },
+        {
+            "source": "Physical:ADCU_V_Speed",
+            "relation": "belongs_to",
+            "target": "Variant:CarModel_A",
+            "context": null
+        },
+        {
+            "source": "Physical:CGW_VehicleSpeed",
+            "relation": "belongs_to",
+            "target": "Variant:CarModel_B",
+            "context": null
+        },
+        {
+            "source": "Physical:BCM_IG_Status",
+            "relation": "represents",
+            "target": "Concept:IG_Status",
+            "context": null
+        },
+        {
+            "source": "Concept:IG_Status",
+            "relation": "implemented_by",
+            "target": "Physical:BCM_IG_Status",
+            "context": "Variant:CarModel_A"
+        },
+        {
+            "source": "Concept:IG_Status",
+            "relation": "implemented_by",
+            "target": "Physical:BCM_IG_Status",
+            "context": "Variant:CarModel_B"
+        },
+        {
+            "source": "Physical:BCM_IG_Status",
+            "relation": "belongs_to",
+            "target": "Variant:CarModel_A",
+            "context": null
+        },
+        {
+            "source": "Physical:BCM_IG_Status",
+            "relation": "belongs_to",
+            "target": "Variant:CarModel_B",
+            "context": null
+        },
+        {
+            "source": "Concept:IG_Status",
+            "relation": "has_enum",
+            "target": "Enum:OnOff_Values",
+            "context": null
+        },
+        {
+            "source": "Physical:BCM_DoorLock_FL",
+            "relation": "represents",
+            "target": "Concept:DoorLock_FL",
+            "context": null
+        },
+        {
+            "source": "Concept:DoorLock_FL",
+            "relation": "implemented_by",
+            "target": "Physical:BCM_DoorLock_FL",
+            "context": "Variant:CarModel_A"
+        },
+        {
+            "source": "Concept:DoorLock_FL",
+            "relation": "implemented_by",
+            "target": "Physical:BCM_DoorLock_FL",
+            "context": "Variant:CarModel_B"
+        },
+        {
+            "source": "Physical:BCM_DoorLock_FL",
+            "relation": "belongs_to",
+            "target": "Variant:CarModel_A",
+            "context": null
+        },
+        {
+            "source": "Physical:BCM_DoorLock_FL",
+            "relation": "belongs_to",
+            "target": "Variant:CarModel_B",
+            "context": null
+        },
+        {
+            "source": "Concept:DoorLock_FL",
+            "relation": "has_enum",
+            "target": "Enum:DoorLock_Values",
+            "context": null
+        },
+        {
+            "source": "Concept:DoorLock_FL",
+            "relation": "constrained_by",
+            "target": "Constraint:Speed_Zero",
+            "context": null
+        },
+        {
+            "source": "Concept:DoorLock_FL",
+            "relation": "related_to",
+            "target": "Concept:VehicleSpeed",
+            "context": null,
+            "description": "차속 조건에 따라 자동 잠금 연동"
+        },
+        {
+            "source": "Physical:BCM_Wiper_Speed",
+            "relation": "represents",
+            "target": "Concept:Wiper_Speed",
+            "context": null
+        },
+        {
+            "source": "Concept:Wiper_Speed",
+            "relation": "implemented_by",
+            "target": "Physical:BCM_Wiper_Speed",
+            "context": "Variant:CarModel_A"
+        },
+        {
+            "source": "Concept:Wiper_Speed",
+            "relation": "implemented_by",
+            "target": "Physical:BCM_Wiper_Speed",
+            "context": "Variant:CarModel_B"
+        },
+        {
+            "source": "Physical:BCM_Wiper_Speed",
+            "relation": "belongs_to",
+            "target": "Variant:CarModel_A",
+            "context": null
+        },
+        {
+            "source": "Physical:BCM_Wiper_Speed",
+            "relation": "belongs_to",
+            "target": "Variant:CarModel_B",
+            "context": null
+        },
+        {
+            "source": "Concept:Wiper_Speed",
+            "relation": "has_enum",
+            "target": "Enum:Wiper_Levels",
+            "context": null
+        },
+        {
+            "source": "Concept:Wiper_Speed",
+            "relation": "constrained_by",
+            "target": "Constraint:IG_Required",
+            "context": null
+        },
+        {
+            "source": "Physical:BCM_Headlamp_Left",
+            "relation": "represents",
+            "target": "Concept:Headlamp_Left",
+            "context": null
+        },
+        {
+            "source": "Concept:Headlamp_Left",
+            "relation": "implemented_by",
+            "target": "Physical:BCM_Headlamp_Left",
+            "context": "Variant:CarModel_A"
+        },
+        {
+            "source": "Concept:Headlamp_Left",
+            "relation": "implemented_by",
+            "target": "Physical:BCM_Headlamp_Left",
+            "context": "Variant:CarModel_B"
+        },
+        {
+            "source": "Physical:BCM_Headlamp_Left",
+            "relation": "belongs_to",
+            "target": "Variant:CarModel_A",
+            "context": null
+        },
+        {
+            "source": "Physical:BCM_Headlamp_Left",
+            "relation": "belongs_to",
+            "target": "Variant:CarModel_B",
+            "context": null
+        },
+        {
+            "source": "Concept:Headlamp_Left",
+            "relation": "has_enum",
+            "target": "Enum:Headlamp_Modes",
+            "context": null
+        },
+        {
+            "source": "Concept:Headlamp_Left",
+            "relation": "constrained_by",
+            "target": "Constraint:IG_Required",
+            "context": null
+        },
+        {
+            "source": "Physical:ADCU_AccelPedal",
+            "relation": "represents",
+            "target": "Concept:AccelPedal",
+            "context": null
+        },
+        {
+            "source": "Concept:AccelPedal",
+            "relation": "implemented_by",
+            "target": "Physical:ADCU_AccelPedal",
+            "context": "Variant:CarModel_A"
+        },
+        {
+            "source": "Concept:AccelPedal",
+            "relation": "implemented_by",
+            "target": "Physical:ADCU_AccelPedal",
+            "context": "Variant:CarModel_B"
+        },
+        {
+            "source": "Physical:ADCU_AccelPedal",
+            "relation": "belongs_to",
+            "target": "Variant:CarModel_A",
+            "context": null
+        },
+        {
+            "source": "Physical:ADCU_AccelPedal",
+            "relation": "belongs_to",
+            "target": "Variant:CarModel_B",
+            "context": null
+        },
+        {
+            "source": "Concept:AccelPedal",
+            "relation": "related_to",
+            "target": "Concept:VehicleSpeed",
+            "context": null,
+            "description": "가속 페달 입력이 차속에 영향"
+        },
+        {
+            "source": "Concept:AccelPedal",
+            "relation": "constrained_by",
+            "target": "Constraint:IG_Required",
+            "context": null
+        }
+    ]
+}
