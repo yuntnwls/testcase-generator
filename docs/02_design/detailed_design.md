@@ -277,7 +277,6 @@ graph TD
 - **통합 포인트**: 모든 모듈은 인터페이스 기반으로 설계되어, 향후 특정 모델(GPT-4 -> Claude 3.5 등)을 교체하더라도 전체 워크플로우 영향 최소화.
 - **UI/DB 연동**: 
     - **GUI**: Streamlit을 통해 사용자에게 변환 과정을 시각적으로 전달 (상세: `ui_proposal.md`).
-    - **DB**: 매핑 결과와 학습 데이터를 영구 저장하여 지속적 고도화 지원 (상세: `db_design.md`).
 - **추적성 및 로깅 (Traceability & Logging)**:
     - **Trace ID**: 사용자 변환 요청 시 단일 `uuid`를 발급하여, Core Engine -> API 호출 -> Adapter Subprocess까지 전체 파이프라인의 로그를 결합합니다.
     - **Dual-Output Logging**: `structlog`를 활용하여 시스템 분석용(기계 친화적 JSON) 로그와, 개발/디버그용(사람 친화적 Console 색상) 텍스트 로그를 분리하여 동시 출력합니다. 이를 통해 파이프라인 구간별 장애 원인을 일관되게 추적합니다.

@@ -1,0 +1,131 @@
+[
+    {
+        "id": "action_set_signal_val",
+        "type": "ACTION",
+        "vector_source": "{signal}를 {value}로 설정한다",
+        "regex_pattern": "^.*?(?P<signal>[a-zA-Z가-힣0-9_\\s]+?)(?:을|를|은|는)?\\s+(?P<value>[a-zA-Z0-9_\\s\\.]+?)(?:으로|로)?\\s+(?:설정|세팅|변경).*$",
+        "variables": [
+            "signal",
+            "value"
+        ],
+        "target_code": "simva.set_signal(\"{signal}\", \"{value}\")"
+    },
+    {
+        "id": "action_turn_on",
+        "type": "ACTION",
+        "vector_source": "{signal}를 켠다",
+        "regex_pattern": "^.*?(?P<signal>[a-zA-Z가-힣0-9_\\s]+?)(?:을|를)?\\s+(?:켠다|킨다|ON).*$",
+        "variables": [
+            "signal"
+        ],
+        "target_code": "simva.set_signal(\"{signal}\", 1)"
+    },
+    {
+        "id": "action_turn_off",
+        "type": "ACTION",
+        "vector_source": "{signal}를 끈다",
+        "regex_pattern": "^.*?(?P<signal>[a-zA-Z가-힣0-9_\\s]+?)(?:을|를)?\\s+(?:끈다|OFF|해제한다).*$",
+        "variables": [
+            "signal"
+        ],
+        "target_code": "simva.set_signal(\"{signal}\", 0)"
+    },
+    {
+        "id": "action_lock",
+        "type": "ACTION",
+        "vector_source": "{signal}를 잠근다",
+        "regex_pattern": "^.*?(?P<signal>[a-zA-Z가-힣0-9_\\s]+?)(?:을|를)?\\s+(?:잠근다|Lock).*$",
+        "variables": [
+            "signal"
+        ],
+        "target_code": "simva.set_signal(\"{signal}\", 1)"
+    },
+    {
+        "id": "action_wait",
+        "type": "ACTION",
+        "vector_source": "{time}초 대기한다",
+        "regex_pattern": "^.*?(?P<time>[0-9\\.]+?)초\\s+(?:대기|기다림|유지).*$",
+        "variables": [
+            "time"
+        ],
+        "target_code": "simva.wait({time} * 1000)"
+    },
+    {
+        "id": "action_check_signal",
+        "type": "ACTION",
+        "vector_source": "현재 {signal}가 {value}인지 확인한다",
+        "regex_pattern": "^.*?(?:현재)?\\s*(?P<signal>[a-zA-Z가-힣0-9_\\s]+?)(?:이|가|은|는)?\\s+(?P<value>[a-zA-Z0-9_\\s\\.]+?)(?:인지)?\\s+(?:확인|체크|검사).*$",
+        "variables": [
+            "signal",
+            "value"
+        ],
+        "target_code": "if simva.get_signal(\"{signal}\") != \"{value}\":\n    raise ValueError(\"Check Failed: {signal} is not {value}\")"
+    },
+    {
+        "id": "meta_condition_ifelse",
+        "type": "META_CONTROL_IFELSE",
+        "vector_source": "{condition}이면 {true_action}한다. 그렇지 않으면 {false_action}한다.",
+        "regex_pattern": "^(?P<condition>.+?)(?:이?면|인\\s*경우)\\s+(?P<true_action>.+?)(?:한다|해라|할것|켠다|잠근다)[\\.\\s]*(?:그렇지\\s*않으면|아니면|않을\\s*경우)\\s+(?P<false_action>.+?)(?:한다|해라|할것|끈다|해제한다)$",
+        "variables": [
+            "condition",
+            "true_action",
+            "false_action"
+        ],
+        "target_code": "if {condition}:\n    {true_action}\nelse:\n    {false_action}"
+    },
+    {
+        "id": "meta_condition_simple",
+        "type": "META_CONTROL_IF",
+        "vector_source": "{condition}인 경우 {true_action}",
+        "regex_pattern": "^(?P<condition>.+?)(?:이?면|인\\s*경우)\\s+(?P<true_action>.+?)$",
+        "variables": [
+            "condition",
+            "true_action"
+        ],
+        "target_code": "if {condition}:\n    {true_action}"
+    },
+    {
+        "id": "meta_expression_greater_equal",
+        "type": "EXPRESSION",
+        "vector_source": "{signal}가 {value} 이상",
+        "regex_pattern": "^(?P<signal>.+?)(?:이|가)\\s+(?P<value>[0-9\\.]+?)\\s*(?:km/h)?\\s*이상$",
+        "variables": [
+            "signal",
+            "value"
+        ],
+        "target_code": "float(simva.get_signal(\"{signal}\")) >= float({value})"
+    },
+    {
+        "id": "meta_expression_equal",
+        "type": "EXPRESSION",
+        "vector_source": "{signal}이 {value}",
+        "regex_pattern": "^(?P<signal>.+?)(?:이|가|은|는)?\\s+(?P<value>[a-zA-Z0-9_]+)$",
+        "variables": [
+            "signal",
+            "value"
+        ],
+        "target_code": "simva.get_signal(\"{signal}\") == \"{value}\""
+    },
+    {
+        "id": "meta_loop_count",
+        "type": "META_CONTROL_LOOP",
+        "vector_source": "{action} 동작을 {count}회 반복한다",
+        "regex_pattern": "^(?P<action>.+?)\\s*(?:동작을|작업을)?\\s*(?P<count>[0-9]+)회\\s*반복.*$",
+        "variables": [
+            "action",
+            "count"
+        ],
+        "target_code": "for _ in range({count}):\n    {action}"
+    },
+    {
+        "id": "meta_sequence_and",
+        "type": "META_SEQUENCE",
+        "vector_source": "{action_a}하고 {action_b}하는",
+        "regex_pattern": "^(?P<action_a>.+?)(?:하고|하며|한\\s*뒤)\\s+(?P<action_b>.+?)(?:하는|한다)$",
+        "variables": [
+            "action_a",
+            "action_b"
+        ],
+        "target_code": "{action_a}\n    {action_b}"
+    }
+]

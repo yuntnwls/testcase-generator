@@ -52,11 +52,12 @@ class PromptBuilder:
 """
     
     @classmethod
-    def build_prompt(cls, user_text: str, rag_signals: list, rag_rules: list) -> str:
+    def build_prompt(cls, user_text: str, rag_signals: list, rag_rules: list, is_expected_result: bool = False) -> str:
         """
         :param user_text: 원본 TC 텍스트 스텝 (예: "엑셀 10% 밟아라")
         :param rag_signals: Vector DB에서 찾은 시그널 매핑 리스트
         :param rag_rules: Ontology 기반으로 검증한 현재 상황/제약 조건 메시지 등
+        :param is_expected_result: 현재 파싱 중인 텍스트가 '판정 조건'인지 여부
         """
         
         # 1. Context 영역 조립
@@ -82,12 +83,37 @@ class PromptBuilder:
                 context_str += (
                     f"- 주의사항 (관련 시그널: {rule.get('source')}): {desc}\n"
                 )
-                
+        
         # 2. Few-shot & Instruction 영역 조립
-        instruction_str = f"""
+        if is_expected_result:
+            instruction_header = """
+[INSTRUCTION (IMPORTANT: EXPECTED RESULT PHASE)]
+현재 처리 중인 텍스트는 테스트의 '판정 조건(Expected Result)'입니다. 
+1. 모든 동작을 반드시 **상태 확인 및 검증(`type: "CHECK"`)**으로 해석해야 합니다. 절대로 값을 설정(`SET`)하거나 상태를 변경하는 인터페이스를 호출하지 마십시오.
+2. "변경되어야 한다", "전환된다", "~가 된다" 등 상태 변화를 나타내는 술어도 모두 **관찰 및 결과 검증(CHECK)**으로 해석하십시오. 절대 조건문(`type: "CONDITION"`)으로 나누어 해석하지 마십시오.
+3. `check_type` 필드에 다음 기준 중 하나를 반드시 명시하십시오:
+   - "turn": "~가 되어야 한다", "~로 변경됨", "~로 전환됨" 등 상태의 '변화/전환'을 확인하는 경우
+   - "keep": "~초 동안 유지", "계속 유지됨" 등 상태의 '지속'을 확인하는 경우. 
+     **중요: 이 경우 반드시 `duration_sec` 필드를 해당 `CHECK` 객체 내부에 포함하고, 별도의 `WAIT` 단계를 생성하지 마십시오.**
+   - "is": 현재 상태를 단순 '확인'하는 일반적인 경우
+
+## Few-shot Examples (Expected Result)
+- Text: "차속이 60km/h인 상태가 3초 이상 유지되어야 한다."
+  JSON: `[{"type": "CHECK", "check_type": "keep", "logical_signal": "VehicleSpeed", "operator": "==", "expected_value": 60, "duration_sec": 3.0}]`
+- Text: "좌석 벨트 경고등이 ON으로 변경되어야 한다."
+  JSON: `[{"type": "CHECK", "check_type": "turn", "logical_signal": "SeatBelt_Warning", "operator": "==", "expected_value": "ON"}]`
+- Text: "차량의 도어 상태가 잠김으로 변경되어야 한다." (잘못된 예시 주의: CONDITION이나 SET을 절대 사용하지 마세요)
+  JSON: `[{"type": "CHECK", "check_type": "turn", "logical_signal": "Door_Status", "operator": "==", "expected_value": "LOCKED"}]`
+"""
+        else:
+            instruction_header = """
 [INSTRUCTION]
+현재 처리 중인 텍스트는 테스트 시나리오의 '시험 방법(Action Phase)'에 해당하는 데이터입니다. 
+명시적인 확인/검증 지시가 없는 한 값을 설정(SET)하는 동작으로 해석하십시오.
+"""
+
+        instruction_footer = f"""
 위 규칙 및 문맥 데이터를 바탕으로 아래 [Target Step]에 대한 IR JSON 배열(List)을 반환하세요.
-현재 처리 중인 텍스트는 테스트 시나리오의 "시험 방법(Action Phase)"에 해당하는 데이터입니다. 명시적인 확인/검증 지시가 없는 한 값을 설정(SET)하는 동작으로 해석하십시오.
 
 # Target Step
 Text: "{user_text}"
@@ -95,4 +121,4 @@ Text: "{user_text}"
 생성 결과(JSON):
 """
         # 최종 프롬프트 결합
-        return context_str + instruction_str
+        return context_str + instruction_header + instruction_footer

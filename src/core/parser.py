@@ -83,10 +83,16 @@ class TCParser:
                         })
                         step_counter += 1
                     
+            # Expected Result 필드 추출
+            expected_result_text = ""
+            if "Expected Result" in df.columns and pd.notna(row.get("Expected Result")):
+                expected_result_text = str(row.get("Expected Result")).strip()
+                
             tc_list.append({
                 "tc_id": tc_id,
                 "tc_title": tc_title,
-                "steps": steps
+                "steps": steps,
+                "expected_result": expected_result_text
             })
             
         return tc_list

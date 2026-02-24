@@ -78,6 +78,32 @@ class CoreEngine:
                     "message": f"Parsed step {step['step_id']}: {step['text']}"
                 }
                 
+            # [ADD] 판정 조건(Expected Result)을 가상 스텝으로 추가 처리
+            if tc_data.get("expected_result"):
+                exp_text = tc_data["expected_result"]
+                t_logger.info(f"Processing Expected Result: {exp_text}")
+                
+                exp_step = {
+                    "step_id": 999, # 임의의 높은 번호 부여
+                    "text": exp_text
+                }
+                
+                # is_expected_result=True 플래그와 함께 LLM 요청
+                exp_ir_list = self._process_step_with_retry(exp_step, t_logger, is_expected_result=True)
+                final_irs.extend(exp_ir_list)
+                
+                yield {
+                    "type": "progress", 
+                    "trace_id": trace_id, 
+                    "tc_id": tc_data["tc_id"],
+                    "tc_title": tc_data["tc_title"],
+                    "tc_index": tc_idx,
+                    "total_tcs": total_tcs,
+                    "current": total_steps, # 마지막 단계와 동일한 진행도 유지
+                    "total": total_steps, 
+                    "message": f"Parsed Expected Result: {exp_text}"
+                }
+                
             # 전체 IR을 묶어서 TestCaseIR 모델로 검증 및 생성
             tc_ir_obj = TestCaseIR(
                 tc_id=tc_data["tc_id"],
@@ -108,7 +134,7 @@ class CoreEngine:
         for _ in self.process_file_stream(file_path, selected_tc_ids):
             pass
 
-    def _process_step_with_retry(self, step: dict, t_logger) -> AnyIR:
+    def _process_step_with_retry(self, step: dict, t_logger, is_expected_result: bool = False) -> AnyIR:
         """
         단일 스텝에 대해 RAG -> LLM 조립 후, Pydantic 에러 시 Self-Correction Loop 수행
         """
@@ -130,7 +156,7 @@ class CoreEngine:
                     rag_rules.append(rule)
             
         system_prompt = PromptBuilder.get_system_prompt()
-        base_prompt = PromptBuilder.build_prompt(user_text, rag_signals, rag_rules)
+        base_prompt = PromptBuilder.build_prompt(user_text, rag_signals, rag_rules, is_expected_result=is_expected_result)
         
         current_prompt = base_prompt
         last_error = ""

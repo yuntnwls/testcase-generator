@@ -40,6 +40,7 @@ class CheckIR(BaseIR):
     operator: Operator = Field(Operator.EQ, description="비교 연산자 (기본값: ==)")
     expected_value: Union[int, float, str, bool] = Field(..., description="기대하는 값")
     duration_sec: Optional[float] = Field(None, description="해당 상태를 유지/확인할 시간 (초)")
+    check_type: Literal["is", "keep", "turn"] = Field("is", description="검증 유형 (is: 즉시, keep: 유지, turn: 변화)")
 
     @field_validator('operator', mode='before')
     @classmethod

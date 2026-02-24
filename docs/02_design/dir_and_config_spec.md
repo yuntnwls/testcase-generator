@@ -11,14 +11,13 @@
 ```text
 testcase-generator/
 ├── config/
-│   └── config.yaml                 # 전체 시스템 통합 설정 파일 (로깅, LLM, DI 등)
+│   └── config.yaml                 # 전체 시스템 통합 설정 파일 (로깅, LLM 등)
 ├── data/                           # 영구 저장 데이터 (git 무시 권장)
 │   ├── vector_db/                  # ChromaDB 로컬 파일 저장소
 │   ├── ontology/
 │   │   └── mock_ontology_db.json   # 선행조건/관계 룰 파일
 │   └── tc_data/                    # 사용자 업로드 또는 샘플 TC 데이터 (mock_tc_data.tsv)
 ├── logs/                           # 구조화된 로그 출력 폴더 (.gitignore 처리)
-│   ├── app.log                     # 사람 가독성용 텍스트 로그 (ConsoleRenderer)
 │   └── app.jsonl                   # 기계 및 분석 도구용 순수 JSON JSONL 로그
 ├── src/
 │   ├── core/                       # Core Engine (LLM 및 데이터 흐름 제어)
@@ -48,7 +47,7 @@ testcase-generator/
 ### 1.1. 각 레이어별 설계 제약 (Constraints)
 - **`src/core/` 규칙**: 이 폴더 내부의 코드는 `Target Language(SIMVA)`나 특정 `LLM(OpenAI)`에 종속적인 코드를 단 한 줄도 가져서는 안 됩니다. 인터페이스와 설정 파일에만 의존해야 합니다.
 - **`src/adapters/` 규칙**: 메인 프로세스와 메모리 공유를 엄격히 금지합니다. 오직 `stdin`으로 JSON을 받고 `stdout`으로 최종 코드를 출력하며, 패키지 `import` 시 상위 디렉토리(`core`)를 참조하지 않도록 독립성을 유지해야 합니다.
-- **`data/` 규칙**: 시스템이 재구동되어도 유지되어야 하는 상태(State) 데이터이며, DB 교체(예: 로컬 파일 -> 원격 DB서버)가 언제든 가능하도록 파이썬 코드 상위 경로를 절대 참조(Hard-coding)하지 않고 반드시 `config.yaml`을 통해 경로를 받아와야 합니다.
+- **`data/` 규칙**: 시스템이 재구동되어도 유지되어야 하는 상태(State) 데이터이며, 데이터 소스 경로를 코드에 하드코딩하지 않고 반드시 `config.yaml`을 통해 관리합니다.
 
 ---
 

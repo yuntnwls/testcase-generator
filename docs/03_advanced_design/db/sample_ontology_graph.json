@@ -1,0 +1,92 @@
+{
+    "Concept:VehicleSpeed": {
+        "type": "LogicalConcept",
+        "synonyms": [
+            "차량 속도",
+            "속도",
+            "현재 속도",
+            "에고 속도",
+            "Speed",
+            "차속"
+        ],
+        "description": "차량의 주행 속도 상태를 나타내는 추상 개념",
+        "relationships": {
+            "implemented_by": [
+                {
+                    "target_node": "Physical:CGW_VehicleSpeed",
+                    "context_variant": "Variant:CarModel_A"
+                },
+                {
+                    "target_node": "Physical:ADCU_V_Speed_Main",
+                    "context_variant": "Variant:CarModel_B"
+                }
+            ],
+            "related_concepts": [
+                "Concept:WheelSpeed",
+                "Concept:Acceleration"
+            ]
+        }
+    },
+    "Concept:DoorLock_FL": {
+        "type": "LogicalConcept",
+        "synonyms": [
+            "운전석 도어",
+            "앞열 좌측 문",
+            "차문",
+            "Door",
+            "차 문"
+        ],
+        "relationships": {
+            "implemented_by": [
+                {
+                    "target_node": "Physical:BDC_DoorLock",
+                    "context_variant": "Variant:CarModel_A"
+                },
+                {
+                    "target_node": "Physical:IBU_Door_Status_Left",
+                    "context_variant": "Variant:CarModel_B"
+                }
+            ]
+        },
+        "value_map": {
+            "Variant:CarModel_A": {
+                "잠근다": 1,
+                "해제한다": 0,
+                "잠김": 1,
+                "풀림": 0
+            },
+            "Variant:CarModel_B": {
+                "잠근다": "LOCK",
+                "해제한다": "UNLOCK"
+            }
+        }
+    },
+    "Physical:CGW_VehicleSpeed": {
+        "type": "PhysicalSignal",
+        "ecu": "CGW",
+        "signal_id": "VehicleSpeed"
+    },
+    "Physical:ADCU_V_Speed_Main": {
+        "type": "PhysicalSignal",
+        "ecu": "ADCU",
+        "signal_id": "V_Speed_Main"
+    },
+    "Physical:BDC_DoorLock": {
+        "type": "PhysicalSignal",
+        "ecu": "BDC",
+        "signal_id": "DoorLock"
+    },
+    "Physical:IBU_Door_Status_Left": {
+        "type": "PhysicalSignal",
+        "ecu": "IBU",
+        "signal_id": "Door_Status_Left"
+    },
+    "Variant:CarModel_A": {
+        "type": "VehicleModel",
+        "description": "2025년형 중형 세단 플랫폼"
+    },
+    "Variant:CarModel_B": {
+        "type": "VehicleModel",
+        "description": "2026년형 전기차(EV) 플랫폼"
+    }
+}

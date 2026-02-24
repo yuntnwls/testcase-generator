@@ -36,8 +36,13 @@ class BaseAdapter(ABC):
         pass
 
     @abstractmethod
-    def translate_test_case_header(self, tc_id: str, tc_title: str) -> str:
+    def translate_test_case_header(self, tc_obj: TestCaseIR) -> str:
         """개별 TC의 함수 정의(def) 시작 부분 생성"""
+        pass
+
+    @abstractmethod
+    def translate_test_case_footer(self, tc_obj: TestCaseIR) -> str:
+        """개별 TC의 종료 부분 생성 (예: return문)"""
         pass
 
     @abstractmethod
@@ -178,7 +183,7 @@ class BaseAdapter(ABC):
                 self._last_comment = None # TC마다 주석 추적 초기화
                 
                 # 2. TC 시작 정의 (함수명 등)
-                print(self.translate_test_case_header(tc_obj.tc_id, tc_obj.tc_title))
+                print(self.translate_test_case_header(tc_obj))
                 
                 steps = tc_obj.steps
                 total_steps = len(steps)
@@ -192,9 +197,12 @@ class BaseAdapter(ABC):
                 if len(tc_list) > 1:
                     self.log_progress(tc_idx + 1, len(tc_list))
                 
+                # 4. TC 종료 정의 (return 등)
+                print(self.translate_test_case_footer(tc_obj))
+                
                 print("") # TC 간 공백
 
-            # 4. Footer 출력
+            # 5. Footer 출력
             print(self.generate_footer())
             self.log_info("Translation sequence completed.")
             

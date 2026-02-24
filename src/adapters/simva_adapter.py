@@ -22,13 +22,40 @@ class SimvaAdapter(BaseAdapter):
         ]
         return "\n".join(header_lines)
 
-    def translate_test_case_header(self, tc_id: str, tc_title: str) -> str:
+    def _has_checks(self, tc_obj) -> bool:
+        """TC 내부에 CHECK IR 혹은 검증이 포함된 CONDITION이 있는지 확인"""
+        def check_steps(steps):
+             for s in steps:
+                 if s.type == "CHECK":
+                     return True
+                 if s.type == "SEQUENCE":
+                     if check_steps(s.actions): return True
+                 if s.type == "CONDITION":
+                     if s.condition_signal: return True # 조건문 자체가 검증 성격
+                     if check_steps(s.if_body): return True
+                     if check_steps(s.else_body): return True
+                 if s.type == "LOOP":
+                     if check_steps(s.body): return True
+             return False
+        return check_steps(tc_obj.steps)
+
+    def translate_test_case_header(self, tc_obj) -> str:
         import re
+        tc_id = tc_obj.tc_id
+        tc_title = tc_obj.tc_title
         # TC ID와 타이틀을 조합하여 메인 함수명 생성
         clean_name = re.sub(r'[^a-zA-Z0-9_]', '_', f"{tc_id}_{tc_title}")
         clean_name = re.sub(r'_+', '_', clean_name).strip('_')
         
-        return f"def {clean_name}():"
+        header = f"def {clean_name}():"
+        if self._has_checks(tc_obj):
+            header += f"\n{self.get_indent(1)}result = True"
+        return header
+
+    def translate_test_case_footer(self, tc_obj) -> str:
+        if self._has_checks(tc_obj):
+            return f"{self.get_indent(1)}return result"
+        return ""
 
     def _format_value(self, val) -> str:
         """가급적 q. 상수로 매핑하거나 문자열 쿼트 처리"""
@@ -67,17 +94,22 @@ class SimvaAdapter(BaseAdapter):
         sig = self._format_signal(ir_step.logical_signal)
         val = self._format_value(ir_step.expected_value)
         
-        # 1. 단발성 체크
-        if ir_step.duration_sec is None or ir_step.duration_sec == 0:
-             op_map = {"==": "is_eq", "!=": "is_ne", "<": "is_lt", ">": "is_gt", "<=": "is_le", ">=": "is_ge"}
-             func = op_map.get(ir_step.operator.value, "is_eq")
-             return f"{indent_str}simva.{func}({sig}, {val})"
+        # 1. 유형 접두사 결정 (is, keep, turn)
+        # default는 'is'이나, duration_sec가 명시되면 'keep'으로 취급
+        check_type = getattr(ir_step, "check_type", "is")
+        if ir_step.duration_sec and ir_step.duration_sec > 0:
+            check_type = "keep"
+            
+        op_map = {"==": "eq", "!=": "ne", "<": "lt", ">": "gt", "<=": "le", ">=": "ge"}
+        suffix = op_map.get(ir_step.operator.value, "eq")
+        func = f"{check_type}_{suffix}"
         
-        # 2. 지속 시간 체크
+        if check_type == "keep":
+             call = f"simva.{func}({sig}, {val}, {ir_step.duration_sec})"
         else:
-             op_map = {"==": "keep_eq", "!=": "keep_ne", "<": "keep_lt", ">": "keep_gt", "<=": "keep_le", ">=": "keep_ge"}
-             func = op_map.get(ir_step.operator.value, "keep_eq")
-             return f"{indent_str}simva.{func}({sig}, {val}, {ir_step.duration_sec})"
+             call = f"simva.{func}({sig}, {val})"
+             
+        return f"{indent_str}result = result and {call}"
         
     def translate_wait(self, ir_step, indent: int) -> str:
         indent_str = self.get_indent(indent)
