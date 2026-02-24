@@ -10,6 +10,7 @@ class IRType(str, Enum):
     MACRO_DEF = "MACRO_DEF"   # 사용자 정의 함수(매크로) 정의
     CONDITION = "CONDITION"   # 조건문 (if-elif-else)
     LOOP = "LOOP"             # 반복문
+    SEQUENCE = "SEQUENCE"     # 다중 동작 래퍼 (Multi-action)
     COMPLEX_LOGIC = "COMPLEX_LOGIC" # 복잡한 제어 로직 (LLM 직접 처리용)
     UNKNOWN = "UNKNOWN"       # 파싱 실패
 
@@ -61,6 +62,10 @@ class LoopIR(BaseIR):
     count: int = Field(..., description="반복 횟수")
     body: List['AnyIR'] = Field(..., description="반복해서 실행할 IR 배열 (재귀적 구조)")
 
+class SequenceIR(BaseIR):
+    type: Literal[IRType.SEQUENCE] = IRType.SEQUENCE
+    actions: List['AnyIR'] = Field(..., description="순차적으로 실행할 다중 동작 IR 배열")
+
 class ConditionIR(BaseIR):
     type: Literal[IRType.CONDITION] = IRType.CONDITION
     condition_text: str = Field(..., description="조건식 설명 (예: '시속이 0인 경우')")
@@ -93,7 +98,7 @@ class UnknownIR(BaseIR):
 # Pydantic Discriminator Union
 AnyIR = Union[
     SetIR, CheckIR, WaitIR, MacroCallIR, MacroDefinitionIR, 
-    ConditionIR, LoopIR, ComplexLogicIR, UnknownIR
+    ConditionIR, LoopIR, SequenceIR, ComplexLogicIR, UnknownIR
 ]
 AnyIR = Annotated[AnyIR, Field(discriminator='type')]
 
@@ -101,6 +106,7 @@ AnyIR = Annotated[AnyIR, Field(discriminator='type')]
 LoopIR.model_rebuild()
 ConditionIR.model_rebuild()
 MacroDefinitionIR.model_rebuild()
+SequenceIR.model_rebuild()
 
 class TestCaseIR(BaseModel):
     tc_id: str = Field(..., description="테스트 케이스 식별자 (예: TC_001)")

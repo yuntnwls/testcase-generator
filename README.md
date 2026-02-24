@@ -39,7 +39,6 @@
 - [IR 스키마 규격서](docs/02_design/ir_schema_spec.md): 중간 표현(IR)의 JSON 구조 및 Pydantic 모델 정의
 - [프롬프트 설계 규격서](docs/02_design/prompt_template_spec.md): LLM 지시어, 템플릿 및 Few-shot 예제 포맷
 - [디렉토리 및 설정 규격서](docs/02_design/dir_and_config_spec.md): 프로젝트의 물리적 폴더 구조(Layered Architecture) 및 `config.yaml` 상세 설정 규격
-- [DB 설계서](docs/02_design/db_design.md): RDBMS(SQLite) 및 Vector DB(ChromaDB) 통합 스토리지 설계
 - [RAG DB 스키마](docs/02_design/rag_db_schema_sample.md): Vector DB 및 Ontology를 위한 데이터 구조 예시
 - [RAG Mock 데이터 및 시나리오](docs/02_design/rag_mock_data_scenarios.md): PoC 시연을 위한 상세 데이터셋 및 복합 제어 시나리오 가이드
 

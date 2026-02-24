@@ -10,7 +10,7 @@ def test_control_tc_pipeline_local_llm():
     조건문 및 반복문 변환이 정상적으로 수행되는지 검증합니다.
     """
     # 루트 기준 경로
-    tc_file_path = "data/control_tc_data.tsv"
+    tc_file_path = "data/tc_samples/control_tc_data.tsv"
     
     if not os.path.exists(tc_file_path):
         print(f"{tc_file_path} not found.")

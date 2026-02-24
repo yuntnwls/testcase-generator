@@ -146,6 +146,7 @@ class CoreEngine:
                 
                 # 순수 JSON 추출 (마크다운 백틱 등 제거)
                 clean_json_str = self._clean_llm_json(raw_json_str)
+                t_logger.info(f"Raw LLM JSON: {clean_json_str}")
                 
                 # Pydantic Validation
                 parsed_json = json.loads(clean_json_str)
@@ -154,6 +155,11 @@ class CoreEngine:
                 if isinstance(parsed_json, dict):
                     parsed_json = [parsed_json]
                     
+                # SEQUENCE 타입 평탄화(Flatten) 처리 제거
+                # BaseAdapter가 IRType.SEQUENCE를 재귀적으로 처리하도록 개선되었으므로, 
+                # 엔진 단에서 강제로 최상위 리스트를 풀지 않고 LLM이 반환한 원본 트리 구조를 보존합니다.
+
+
                 for idx_item, item in enumerate(parsed_json):
                     if isinstance(item, dict):
                         item["step_id"] = step_id

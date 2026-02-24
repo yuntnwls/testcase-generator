@@ -14,7 +14,7 @@ def test_mock_tc_data_pipeline():
     engine = CoreEngine()
     
     # 루트 기준 경로
-    tc_file_path = "data/mock_tc_data.tsv"
+    tc_file_path = "data/tc_samples/mock_tc_data.tsv"
     
     # 데이터가 없으면 스킵
     if not os.path.exists(tc_file_path):

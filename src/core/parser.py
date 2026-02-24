@@ -73,11 +73,15 @@ class TCParser:
                 # '1. (Ignition = ON)' 같은 앞자리 포맷 제거 정규식
                 cleaned_line = re.sub(r'^\d+\.\s*', '', line).strip()
                 if cleaned_line:
-                    steps.append({
-                        "step_id": step_counter,
-                        "text": cleaned_line
-                    })
-                    step_counter += 1
+                    # '그렇지 않으면' 등 else를 의미하는 문구로 시작하면 이전 스텝에 병합
+                    if steps and re.match(r'^(그렇지\s*않|아니면|그\s*외|else|otherwise)', cleaned_line, re.IGNORECASE):
+                        steps[-1]["text"] += " " + cleaned_line
+                    else:
+                        steps.append({
+                            "step_id": step_counter,
+                            "text": cleaned_line
+                        })
+                        step_counter += 1
                     
             tc_list.append({
                 "tc_id": tc_id,
@@ -91,7 +95,7 @@ if __name__ == "__main__":
     # 로컬 테스트
     parser = TCParser()
     try:
-        tcs = parser.parse_file("./data/tc_data/mock_tc_data.tsv")
+        tcs = parser.parse_file("./data/tc_samples/mock_tc_data.tsv")
         print(tcs[0])
     except Exception as e:
         print(f"Test failed or file missing: {e}")

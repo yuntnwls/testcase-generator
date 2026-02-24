@@ -166,7 +166,7 @@ for i in range(1, 51):
     mock_test_cases.append(row)
 
 
-mock_tc_path = os.path.join(data_dir, 'mock_tc_data.tsv')
+mock_tc_path = os.path.join(data_dir, 'tc_samples', 'mock_tc_data.tsv')
 with open(mock_tc_path, 'w', encoding='utf-8', newline='') as f:
     writer = csv.DictWriter(f, fieldnames=tc_headers, delimiter='\t')
     writer.writeheader()

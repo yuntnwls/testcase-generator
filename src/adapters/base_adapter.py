@@ -92,8 +92,18 @@ class BaseAdapter(ABC):
         indent_str = self.get_indent(indent)
         code_lines = []
         
-        # 원본 자연어를 주석으로 추가
-        code_lines.append(f"{indent_str}# Step {step.step_id}: {step.original_text}")
+        # 원본 자연어를 주석으로 추가 (Step 0은 생략 및 중복 억제)
+        current_comment = None
+        if step.step_id > 0:
+            current_comment = f"Step {step.step_id}"
+            if step.original_text:
+                current_comment += f": {step.original_text}"
+        elif step.original_text:
+            current_comment = step.original_text
+            
+        if current_comment and current_comment != self._last_comment:
+            code_lines.append(f"{indent_str}# {current_comment}")
+            self._last_comment = current_comment
         
         try:
             translated_code = ""
@@ -113,6 +123,12 @@ class BaseAdapter(ABC):
                 translated_code = self.translate_loop(step, indent)
             elif step.type == IRType.COMPLEX_LOGIC:
                 translated_code = self.translate_complex_logic(step, indent)
+            elif step.type == IRType.SEQUENCE:
+                # SEQUENCE 내의 actions를 순회하며 재귀적으로 변환
+                seq_codes = []
+                for sub_step in step.actions:
+                    seq_codes.append(self.translate_step(sub_step, indent))
+                translated_code = "".join(seq_codes).rstrip()
             elif step.type == IRType.UNKNOWN:
                 translated_code = f"{indent_str}# FIXME (UNKNOWN IR): {step.original_text} | Reason: {step.reason}"
             else:
@@ -159,6 +175,7 @@ class BaseAdapter(ABC):
 
             for tc_idx, tc_obj in enumerate(tc_list):
                 self.parsed_tc = tc_obj # 하위 메서드에서 참조할 수 있도록 설정
+                self._last_comment = None # TC마다 주석 추적 초기화
                 
                 # 2. TC 시작 정의 (함수명 등)
                 print(self.translate_test_case_header(tc_obj.tc_id, tc_obj.tc_title))
