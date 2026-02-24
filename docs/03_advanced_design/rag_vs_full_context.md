@@ -21,20 +21,22 @@
 ```
 자연어 TC Step
     │
-    ├── ① Retriever (Vector DB 검색) ──────── LLM 미사용 (Embedding 유사도만)
+    ├── ① Retriever (Vector DB 검색) ──────── Embedding Model 사용 (생성형 LLM 미사용) ⚡
+    │     └ 참고: Embedding은 텍스트→벡터 변환만 수행하며,
+    │       생성형 LLM 대비 비용 10~100배 저렴 (Output 토큰 0)
     │
     ├── ② Extractor (변수 추출)
-    │     ├── Tier 1: Regex Named Capture ──── LLM 미사용 ✅
-    │     ├── Tier 2: Sequence Alignment ───── LLM 미사용 ✅
-    │     └── Tier 3: SLM Fallback ─────────── 🔴 LLM 호출 (prompt_engineering_guide §2-1)
+    │     ├── Tier 1: Regex Named Capture ──── 모델 미사용 (순수 정규식) ✅
+    │     ├── Tier 2: Sequence Alignment ───── 모델 미사용 (문자열 알고리즘) ✅
+    │     └── Tier 3: SLM Fallback ─────────── 🔴 생성형 LLM 호출 (prompt_engineering_guide §2-1)
     │
     ├── ③ Assembler (Ontology 라우팅)
-    │     ├── Graph Traversal ──────────────── LLM 미사용 ✅
-    │     └── Alias 미매칭 시 ──────────────── 🔴 LLM 호출 (prompt_engineering_guide §2-2)
+    │     ├── Graph Traversal ──────────────── 모델 미사용 (그래프 순회) ✅
+    │     └── Alias 미매칭 시 ──────────────── 🔴 생성형 LLM 호출 (prompt_engineering_guide §2-2)
     │
     └── ④ Validator (코드 검증)
-          ├── ast.parse() 정적 분석 ─────────── LLM 미사용 ✅
-          └── Self-Correction Loop ──────────── 🔴 LLM 호출 (prompt_engineering_guide §2-3)
+          ├── ast.parse() 정적 분석 ─────────── 모델 미사용 (구문 분석기) ✅
+          └── Self-Correction Loop ──────────── 🔴 생성형 LLM 호출 (prompt_engineering_guide §2-3)
 ```
 
 ### 1.2 호출별 예상 토큰 비용
