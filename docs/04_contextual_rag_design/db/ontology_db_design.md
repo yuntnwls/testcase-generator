@@ -2,7 +2,7 @@
 
 본 문서는 방안 C (Contextual RAG) 아키텍처에서 사용되는 **Ontology DB의 지식 그래프 구조, 노드/엣지 스키마, 검색 전략, 자동 갱신 파이프라인**을 상세히 정의합니다.
 
-> 참조: [01_architecture.md](./01_architecture.md) §2.3 Ontology Router의 Fuzzy Filtering 설계
+> 참조: [architecture.md](../architecture.md) §2.3 Ontology Router의 Fuzzy Filtering 설계
 
 ---
 

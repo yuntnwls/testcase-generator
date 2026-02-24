@@ -2,7 +2,7 @@
 
 본 문서는 방안 C (Contextual RAG) 아키텍처에서 사용되는 **Vector DB의 스키마 구조, 컬렉션 설계, Contextual Indexing 전략, 검색 파이프라인**을 상세히 정의합니다.
 
-> 참조: [01_architecture.md](./01_architecture.md) §2.1~2.2, [03_ontology_db_design.md](./03_ontology_db_design.md)
+> 참조: [architecture.md](../architecture.md) §2.1~2.2, [ontology_db_design.md](./ontology_db_design.md)
 
 ---
 
