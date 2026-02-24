@@ -1,252 +1,208 @@
 # Contextual RAG 기반 토큰 비용 최적화 전략
 
-본 문서는 현재 TestScriptGenerator가 채택한 Full Context Window 방식의 토큰 비용 문제를 분석하고, Contextual RAG(Hybrid RAG) 방식으로 전환하여 정확도는 유지하면서 토큰 소비를 대폭 줄이는 아키텍처 전략을 기술합니다.
+본 문서는 `03_advanced_design`에서 설계된 **Direct Synthesis 아키텍처**의 각 모듈에서 RAG 호출 시 발생하는 토큰 비용을 분석하고, Contextual RAG(Hybrid RAG) 방식으로 토큰 소비를 최소화하는 전략을 제시합니다.
+
+> [!NOTE]
+> 본 문서의 모든 참조는 현재 구현 코드가 아닌, 아래 설계 문서들을 기준으로 작성되었습니다.
+> - [architecture_design.md] — Retriever → Extractor → Assembler → Validator 파이프라인
+> - [prompt_engineering_guide.md] — Tier 3~4 LLM 프롬프트 설계
+> - [tc_script_generation_strategy.md] — 컬럼별 라우팅 및 값 정규화 파이프라인
+> - [db/vector_db_schema.md] — Vector DB 스키마
+> - [db/ontology_db_schema.md] — Ontology Knowledge Graph 스키마
 
 ---
 
-## 1. 현재 방식(Full Context)의 토큰 비용 문제 진단
+## 1. 현재 설계에서의 LLM 호출 지점과 토큰 비용 분석
 
-현재 `prompt_builder.py`의 `build_prompt()` 함수는 Vector DB에서 찾은 **모든 시그널 매칭 결과**와 **온톨로지 규칙 전체**를 매 Step 호출마다 CONTEXT 섹션에 통째로 주입합니다.
+`architecture_design.md`의 Direct Synthesis 파이프라인에서 LLM이 호출되는 시점은 **3곳**입니다. 모든 구간이 Full Context로 동작하면 토큰 부담이 커집니다.
 
-### 문제 구조 (현재)
+### 1.1 LLM 호출 지점 맵 (설계 기준)
 
 ```
-[매 Step LLM 호출 시 프롬프트 구성]
-├── System Prompt (IR 스키마, Rules)  ~1,500 tokens (고정)
-├── [CONTEXT] RAG 시그널 결과         ~500~2,000 tokens (가변, 검색된 전체 시그널 목록)
-├── [CONTEXT] Ontology 규칙            ~300~1,000 tokens (가변, 현재 없어도 주입)
-└── 사용자 Step 텍스트                  ~30~100 tokens
-                                      ─────────────────
-Total per Step call                   ≈ 2,300 ~ 4,600 tokens
+자연어 TC Step
+    │
+    ├── ① Retriever (Vector DB 검색) ──────── LLM 미사용 (Embedding 유사도만)
+    │
+    ├── ② Extractor (변수 추출)
+    │     ├── Tier 1: Regex Named Capture ──── LLM 미사용 ✅
+    │     ├── Tier 2: Sequence Alignment ───── LLM 미사용 ✅
+    │     └── Tier 3: SLM Fallback ─────────── 🔴 LLM 호출 (prompt_engineering_guide §2-1)
+    │
+    ├── ③ Assembler (Ontology 라우팅)
+    │     ├── Graph Traversal ──────────────── LLM 미사용 ✅
+    │     └── Alias 미매칭 시 ──────────────── 🔴 LLM 호출 (prompt_engineering_guide §2-2)
+    │
+    └── ④ Validator (코드 검증)
+          ├── ast.parse() 정적 분석 ─────────── LLM 미사용 ✅
+          └── Self-Correction Loop ──────────── 🔴 LLM 호출 (prompt_engineering_guide §2-3)
 ```
 
-### 비용 시뮬레이션
+### 1.2 호출별 예상 토큰 비용
 
-하나의 TC(평균 5 Step + Expected Result 1건 = 6회 호출) 기준:
-
-| 항목 | 현재 Full Context | 목표 Contextual RAG |
-| :--- | ---: | ---: |
-| Step당 Platform 토큰 (Input) | ~3,000 tokens | ~800 tokens |
-| TC 1건 기준 총 Input 토큰 | **~18,000 tokens** | **~4,800 tokens** |
-| 100개 TC 처리 시 Input | **~1,800,000 tokens** | **~480,000 tokens** |
-| 예상 비용 절감율 | — | **약 73% 절감** |
+| 호출 지점 | 프롬프트 구성 (prompt_engineering_guide 기준) | 예상 토큰/호출 | 빈도 |
+| :--- | :--- | ---: | :--- |
+| **Tier 3 Extractor** | System(Few-shot 2개) + User(입력+템플릿) | ~600 tokens | Step의 ~10% |
+| **Ontology Router** | System(Alias 매핑 규칙) + User(미매칭 은어+후보 리스트) | ~800 tokens | Step의 ~5% |
+| **Self-Correction** | System(수정 규칙) + User(원본 TC+기존 코드+에러 로그) | ~1,500 tokens | TC의 ~15% |
+| **Template Rescue** | System(패턴 유추 가이드) + User(미등록 문장) | ~1,000 tokens | Step의 ~3% |
 
 > [!IMPORTANT]
-> 시그널 DB가 5개 제어기(ECU) 수준으로 성장하면 CONTEXT 섹션이 5,000 토큰을 초과할 수 있습니다. 이 시점에서 Full Context 방식은 비용과 속도 양면에서 실용적 한계에 도달합니다.
+> 현재 설계의 **3-Tier Extractor** 덕분에, **90%의 Step은 LLM 없이(Zero-LLM)** 처리됩니다. 토큰 최적화의 핵심은 나머지 10%에서 호출되는 LLM의 입력 토큰을 줄이는 것과, **Self-Correction Loop의 반복을 최소화**하는 것입니다.
 
 ---
 
-## 2. Contextual RAG 아키텍처의 핵심 개념
+## 2. Contextual RAG로 각 모듈의 토큰을 절감하는 전략
 
-단순한 청크 분할(Chunking) + 유사도 검색과 달리, **Contextual RAG는 각 데이터 조각이 전체 문서에서 가지는 맥락(Context)을 사전에 처리하여 저장**합니다. 검색 시 맥락이 이미 포함된 데이터를 반환하므로, LLM에 소량의 정제된 정보만 전달해도 전체 이해가 가능합니다.
+### 2.1 Vector DB의 Contextual Indexing (Stage 1 — 오프라인, 1회성)
 
-```mermaid
-graph LR
-    subgraph "기존 방식 (Full Context)"
-        A[사용자 Step] --> B["모든 시그널 목록 (~2,000 tokens)"]
-        B --> C[LLM 추론]
-    end
-    subgraph "Contextual RAG 방식"
-        D[사용자 Step] --> E["의미 기반 검색<br/>(Top-3 시그널만 선택)"]
-        E --> F["맥락 포함 소량 정보<br/>(~300 tokens)"]
-        F --> G[LLM 추론]
-    end
+`vector_db_schema.md`에 정의된 현재 스키마에 **`context_prefix`** 필드를 추가하여, 검색 정확도를 높이고 Tier 3 Fallback 빈도 자체를 줄입니다.
+
+**현재 Vector DB 스키마** (`vector_db_schema.md` §2.1):
+```json
+{
+  "id": "action_set_signal",
+  "type": "ACTION",
+  "vector_source": "{signal}를 {value}로 설정한다",
+  "regex_pattern": "^.*?(?P<signal>...)...$",
+  "variables": ["signal", "value"],
+  "target_code": "simva.set_signal(signals.{ecu}.{signal}, \"{value}\")"
+}
 ```
+
+**Contextual RAG 적용 후 스키마 확장안**:
+```json
+{
+  "id": "action_set_signal",
+  "type": "ACTION",
+  "context_prefix": "차량 제어 시그널의 상태값을 변경하는 일반적인 할당 동작. 도어, 램프, 와이퍼, 기어 등 모든 ECU 신호에 적용 가능하며, 조건문 내부의 하위 액션으로도 빈번히 사용됨.",
+  "vector_source": "{signal}를 {value}로 설정한다",
+  "full_text_for_embedding": "차량 제어 시그널의 상태값을 변경하는 ... {signal}를 {value}로 설정한다",
+  "regex_pattern": "^.*?(?P<signal>...)...$",
+  "variables": ["signal", "value"],
+  "target_code": "simva.set_signal(signals.{ecu}.{signal}, \"{value}\")"
+}
+```
+
+**효과**:
+- `context_prefix`가 임베딩에 포함되므로, 은어·축약어를 사용한 TC 문장도 더 높은 유사도(Score)로 정확한 템플릿에 매칭됩니다.
+- **Tier 3 SLM Fallback 호출 빈도 감소** (추정 10% → 3~5%) → 토큰 절감
 
 ---
 
-## 3. 3단계 Hybrid RAG 파이프라인 설계
+### 2.2 Ontology Router의 Precision Filtering (Stage 2 — 런타임)
 
-현재 프로젝트에 `HybridRAGEngine`이 이미 존재합니다 (`src/core/rag_engine.py`). 이 엔진을 기반으로 다음 3단계 파이프라인을 구성합니다.
+`prompt_engineering_guide.md` §2-2의 Ontology Router 프롬프트에서 **모든 후보 노드**를 LLM에 전송하는 대신, Graph Traversal 결과를 사전 필터링하여 후보 수를 줄입니다.
 
-### Stage 1: 전처리 — Contextual Indexing (오프라인, 1회성)
-
-시그널 사양서를 Vector DB에 넣기 전, 각 시그널 청크에 LLM이 생성한 **맥락 설명**을 사전에 붙여놓습니다.
-
-**현재 DB 인덱싱 방식 (문제)**:
-```json
-{
-  "id": "Door_Status",
-  "text": "Door_Status | BDC | enum: OPEN, CLOSED, LOCKED",
-  "embedding": [...]
-}
+**현재 설계 (Full Context)**:
+Ontology Router가 호출될 때, 지식 그래프 내 **전체 Concept 노드 리스트**를 후보로 전달:
+```text
+[Ontology Router User Prompt]
+미매칭 은어: "악셀"
+전체 후보 목록: VehicleSpeed, DoorLock, SeatBelt_Warning, HeadLamp, TailLamp,
+                Wiper_Status, IG_Status, Gear_Status, HazardLamp, ... (수십~수백 개)
 ```
+→ 후보가 많을수록 **Input 토큰 증가** (~800+ tokens)
 
-**개선된 Contextual 인덱싱 방식**:
-```json
-{
-  "id": "Door_Status",
-  "context_prefix": "이 시그널은 BDC 제어기의 도어 잠금 상태를 나타내며, 차량 속도(VehicleSpeed)가 10km/h를 초과할 때 자동 연동됩니다.",
-  "text": "Door_Status | BDC | enum: OPEN, CLOSED, LOCKED",
-  "full_text_for_embedding": "이 시그널은 BDC 제어기의 도어 잠금 상태를 나타내며... Door_Status | BDC | enum: OPEN, CLOSED, LOCKED",
-  "embedding": [...]
-}
+**Contextual RAG 적용 (Precision Filtering)**:
+1단계로 Ontology Graph의 `synonyms` 필드에서 **문자열 유사도(fuzzy match)**로 Top-5 후보를 먼저 필터링한 뒤, LLM에는 소량의 후보만 전달합니다.
+
+```text
+[Ontology Router User Prompt — 최적화 후]
+미매칭 은어: "악셀"
+후보 (Top-5 fuzzy match): 
+  1. VehicleSpeed (synonyms: 차속, 속도, 스피드)
+  2. AccelPedal (synonyms: 가속 페달, 엑셀)
+  3. Gear_Status (synonyms: 기어, 변속)
 ```
+→ **Input 토큰 ~300 tokens로 감소** (약 62% 절감)
+
+---
+
+### 2.3 Self-Correction Loop의 에러 컨텍스트 압축 (Stage 3 — 런타임)
+
+`prompt_engineering_guide.md` §2-3 Self-Correction 프롬프트에서 가장 토큰을 많이 소모하는 부분은 **에러 트레이스백(Traceback) 전문**과 **이전 코드 전문**입니다.
+
+**현재 설계 (Full Context)**:
+```text
+[이전 수립 코드]: (전체 TC 함수 코드 ~30줄)
+[발생한 에러 로그]: (Python traceback 전문 ~15줄)
+```
+→ **~1,500 tokens/호출**, 최대 3회 반복 시 ~4,500 tokens
+
+**Contextual RAG 적용 (Error Context Summarization)**:
+- 에러 트레이스백에서 **마지막 프레임(최종 원인)만 추출**
+- 이전 코드에서 **에러가 발생한 줄 ±3줄만 발췌**
+
+```text
+[에러 요약]: Line 12에서 NameError: 'Wiper_Staus' is not defined (오타 의심)
+[에러 주변 코드]:
+  L10:     simva.set_signal(signals.BCM.DoorLock, "LOCKED")
+  L11:     simva.wait(2.0)
+  L12: >>> simva.set_signal(signals.BCM.Wiper_Staus, "LOW")   # <-- 에러
+  L13:     result = simva.is_eq(signals.BCM.Wiper_Status, "LOW")
+```
+→ **~500 tokens/호출로 감소** (약 67% 절감), 3회 반복해도 ~1,500 tokens
+
+---
+
+## 3. 비용 절감 효과 종합
+
+### TC 1건(평균 5 Step + Expected Result) 기준 시뮬레이션
+
+| 호출 지점 | Full Context (현재 설계) | Contextual RAG (최적화) | 절감율 |
+| :--- | ---: | ---: | ---: |
+| Tier 3 Extractor (빈도 10%→5%) | 600 × 0.6회 = 360 | 600 × 0.3회 = **180** | 50% |
+| Ontology Router (빈도 5%→3%) | 800 × 0.3회 = 240 | 300 × 0.18회 = **54** | 78% |
+| Self-Correction (빈도 15%) | 1,500 × 0.9회 = 1,350 | 500 × 0.6회 = **300** | 78% |
+| Template Rescue (빈도 3%) | 1,000 × 0.18회 = 180 | 1,000 × 0.1회 = **100** | 44% |
+| **소계 (LLM 토큰)** | **~2,130 tokens** | **~634 tokens** | **~70% ↓** |
 
 > [!TIP]
-> `context_prefix`는 `架構 문서의 일부`, `연관 제어기`, `제약 조건` 등을 3~4문장으로 요약한 것입니다. 이 사전 작업은 오프라인으로 배치(Batch) 처리하므로 운영 중 추가 비용이 발생하지 않습니다.
-
-**구현 대상 파일**: `src/db/indexer.py` (신규) 또는 `HybridRAGEngine` 내 `build_index()` 메서드 확장
-
-```python
-def contextual_index_signal(signal_entry: dict) -> dict:
-    """
-    각 시그널에 LLM 생성 맥락 설명을 사전 부착하는 함수.
-    오프라인 배치 처리용.
-    """
-    prompt = f"다음 자동차 시그널 정보에 대해 전체 시스템 내 역할과 연관 신호를 3문장으로 요약하세요:\n{signal_entry}"
-    context = llm.invoke(prompt)  # 최저가 모델(예: gpt-4o-mini) 사용
-    signal_entry["context_prefix"] = context
-    signal_entry["full_text_for_embedding"] = f"{context}\n{signal_entry['text']}"
-    return signal_entry
-```
+> 주의: 위 수치는 LLM이 호출되는 Fallback 경로의 토큰만 계산한 것입니다. Tier 1(Regex) + Tier 2(Alignment) 경로는 **LLM을 전혀 사용하지 않으므로** 토큰 비용이 0입니다. 이것이 현재 설계의 가장 큰 장점입니다.
 
 ---
 
-### Stage 2: 검색 — Precision RAG (런타임, 매 Step 호출)
+## 4. 마이그레이션 로드맵
 
-매 Step 처리 시, 전체 시그널 목록 대신 **의미적으로 가장 관련성 높은 상위 3~5개만** 검색하여 반환합니다.
+### Phase 1 — 즉시 적용 (설계 문서 수정만)
 
-**현재 `engine.py`의 호출 방식** (비효율적):
-```python
-# _process_step_with_retry 내부 (현재 추정 구조)
-rag_signals = self.rag.query_signals(step["text"])  # 상위 N개 반환
-rag_rules = self.rag.query_rules(step["text"])      # 전체 규칙 반환
-prompt = PromptBuilder.build_prompt(step["text"], rag_signals, rag_rules)
-```
-
-**개선된 Precision RAG 방식** (토큰 절감):
-```python
-# top_k를 엄격하게 제한하고 score threshold 적용
-rag_signals = self.rag.query_signals(
-    step["text"],
-    top_k=3,                  # 상위 3개만
-    score_threshold=0.75      # 유사도 75% 미만은 제외
-)
-
-# 온톨로지 규칙도 관련 제어기(ECU)에 한정하여 조회
-relevant_ecus = [s["ecu"] for s in rag_signals]
-rag_rules = self.rag.query_rules_by_ecu(relevant_ecus)  # ECU 필터링
-
-prompt = PromptBuilder.build_prompt(step["text"], rag_signals, rag_rules)
-```
-
-**`HybridRAGEngine`에 추가할 메서드**:
-```python
-def query_rules_by_ecu(self, ecu_list: list[str]) -> list[dict]:
-    """
-    관련 ECU에 해당하는 온톨로지 규칙만 필터링하여 반환.
-    전체 규칙 대신 Step당 평균 1~2개 규칙만 LLM에 주입.
-    """
-    return [r for r in self.ontology_rules if r.get("ecu") in ecu_list]
-```
-
----
-
-### Stage 3: 주입 — Step History Summarization (토큰 절약형 맥락 유지)
-
-이전 Step들의 내용을 전부 나열하는 대신, **누적 처리 결과를 요약한 1~2줄의 History Summary**만 프롬프트에 주입합니다.
-
-**`engine.py`에 추가할 히스토리 요약 로직**:
-```python
-def _build_step_history_summary(self, processed_irs: list) -> str:
-    """
-    이전 Step들의 IR 결과를 1줄 요약으로 압축.
-    Full Context 대신 요약만 주입하여 토큰 절약.
-    
-    예시 출력:
-    "이전 동작 요약: [1] VehicleSpeed=50 설정, [2] Gear_Status=P 설정"
-    """
-    summaries = []
-    for i, ir in enumerate(processed_irs, 1):
-        if ir.type == "SET":
-            summaries.append(f"[{i}] {ir.logical_signal}={ir.value} 설정")
-        elif ir.type == "WAIT":
-            summaries.append(f"[{i}] {ir.duration_sec}초 대기")
-    return "이전 동작 요약: " + ", ".join(summaries) if summaries else ""
-```
-
-**`PromptBuilder.build_prompt()`에 `step_history` 파라미터 추가**:
-```python
-@classmethod
-def build_prompt(cls, user_text, rag_signals, rag_rules,
-                 is_expected_result=False,
-                 step_history: str = "") -> str:
-    context_str = "[CONTEXT]\n"
-    
-    # 히스토리 요약 (소량, ~50 tokens)
-    if step_history:
-        context_str += f"## 선행 Step 요약\n{step_history}\n\n"
-    
-    # 검색된 시그널 (상위 3개, ~200 tokens)
-    context_str += "## 관련 시그널\n"
-    ...
-```
-
----
-
-## 4. 파이프라인 전후 비교
-
-### 토큰 구조 비교
-
-```
-[AS-IS: 현재 Full Context 방식]                [TO-BE: Contextual RAG 방식]
-─────────────────────────────────────          ─────────────────────────────────────
-System Prompt          : 1,500 tokens          System Prompt          : 1,500 tokens
-── [CONTEXT] ──────────────────────            ── [CONTEXT] ──────────────────────
-  시그널 전체 목록     : 1,500 tokens            선행 Step 요약        :    50 tokens  ▼ 절감
-  온톨로지 규칙 전체   :   800 tokens            Top-3 시그널 (맥락포함):   250 tokens  ▼ 절감
-                                                관련 ECU 규칙 1~2개   :   100 tokens  ▼ 절감
-사용자 Step Text       :    80 tokens          사용자 Step Text        :    80 tokens
-─────────────────────                          ─────────────────────
-Total per call : ~3,880 tokens                 Total per call : ~1,980 tokens
-                                               절감율: 약 49% ↓
-```
-
----
-
-## 5. 마이그레이션 로드맵
-
-### Phase 1 — 즉시 적용 가능 (코드 수정만)
-
-| 작업 | 대상 파일 | 예상 토큰 절감 |
-| :--- | :--- | ---: |
-| RAG `top_k=3`, `score_threshold=0.75` 설정 | `rag_engine.py` / `engine.py` | ~40% |
-| ECU 기반 온톨로지 필터링 `query_rules_by_ecu()` 구현 | `rag_engine.py` | ~15% |
-| Step History Summary 주입 | `engine.py`, `prompt_builder.py` | ~10% |
-| **합계** | | **~55% 절감** |
-
-### Phase 2 — 단기 (인덱싱 파이프라인 개선)
-
-| 작업 | 대상 파일 | 효과 |
+| 작업 | 대상 설계 문서 | 효과 |
 | :--- | :--- | :--- |
-| `contextual_index_signal()` 배치 스크립트 작성 | `src/db/indexer.py` (신규) | 검색 정확도 +20% |
-| 시그널 DB 재인덱싱 (맥락 prefix 추가) | `vector_db_storage/` | 오타/동의어 매칭 향상 |
-| `script/rebuild_index.py` 관리 스크립트 추가 | `scripts/` (신규) | 운영 편의성 |
+| Vector DB 스키마에 `context_prefix` 필드 추가 | `db/vector_db_schema.md` | 검색 정확도 향상, Tier 3 빈도 감소 |
+| Ontology Router 프롬프트에 fuzzy Top-5 사전 필터링 명시 | `prompt_engineering_guide.md` §2-2 | 후보 토큰 62% 절감 |
+| Self-Correction 프롬프트에 에러 요약 전략 반영 | `prompt_engineering_guide.md` §2-3 | 에러 토큰 67% 절감 |
 
-### Phase 3 — 중장기 (대규모 확장 시)
+### Phase 2 — 구현 시점
+
+| 작업 | 대상 모듈 (신규) | 효과 |
+| :--- | :--- | :--- |
+| `contextual_indexer.py` — 배치 인덱싱 시 LLM으로 `context_prefix` 자동 생성 | `src/db/` | 오프라인 1회 비용으로 운영 시 정확도 획기적 향상 |
+| `retriever.py`에 `score_threshold` 도입 — 0.75 미만 결과 자동 폐기 | `src/core/` | 노이즈 템플릿 유입 방지 |
+| `validator.py`에 에러 컨텍스트 압축 로직 (±3줄 발췌) 추가 | `src/core/` | Self-Correction 토큰 67% 절감 |
+
+### Phase 3 — 대규모 확장 시
 
 | 작업 | 효과 |
 | :--- | :--- |
-| ChromaDB → Qdrant 마이그레이션 (성능) | 검색 레이턴시 50% 감소 |
-| 시그널 캐시 레이어 (`LRU Cache`) 도입 | 동일 Step 중복 호출 제거 |
-| 배치(Batch) API 활용 (야간 처리) | 비용 추가 50% 절감 |
+| 배치 Step 처리 시 **Step History Summary** 동적 주입 | 재귀적 문맥 파악 향상 (복합 조건문 정확도) |
+| ChromaDB → Qdrant 마이그레이션 | 대량 컬렉션 검색 레이턴시 감소 |
+| `Pattern Cache` 레이어 도입 (`architecture_design.md` §4 참조) | 동일 패턴 반복 호출 완전 제거 |
 
 ---
 
-## 6. 의사결정 가이드
-
-현재 상황에 따라 어떤 방식을 선택할지 결정하는 기준입니다.
+## 5. 의사결정 가이드
 
 ```mermaid
 graph TD
-    A[시그널 DB 규모?] -->|100개 미만| B[현재 방식 유지 가능]
-    A -->|100~1,000개| C[Phase 1 적용 권장]
-    A -->|1,000개 이상| D[Phase 1+2 필수]
-    C --> E[TC 100건 이상 배치 처리?]
-    E -->|Yes| F[Phase 3 Batch API 고려]
-    E -->|No| G[Phase 1만으로 충분]
+    A["Tier 1+2에서<br/>몇 %가 처리되는가?"] -->|90% 이상| B["현재 설계 유지<br/>(Zero-LLM 비율 우수)"]
+    A -->|80% 미만| C["Phase 1 적용 필수<br/>(context_prefix 추가)"]
+    C --> D["Self-Correction<br/>평균 반복 횟수?"]
+    D -->|1.5회 이상| E["Phase 2 적용 권장<br/>(에러 압축 + threshold)"]
+    D -->|1회 미만| F["Phase 1만으로 충분"]
+    B --> G["시그널 종류 500개 이상?"]
+    G -->|Yes| H["Phase 3 고려<br/>(Qdrant + Cache)"]
+    G -->|No| I["추가 최적화 불필요"]
 ```
 
 > [!NOTE]
-> 현재 프로젝트 규모에서는 **Phase 1 (코드 수정)만으로도 약 55%의 토큰 절감**이 가능합니다. Phase 2(인덱싱 재구성)는 시그널 종류가 200개를 넘어가는 시점에 투자 대비 효과가 극대화됩니다.
+> 현재 설계의 **3-Tier Extractor + Ontology Graph Traversal** 조합은 이미 LLM 호출을 극도로 억제하는 구조입니다. Contextual RAG는 이 위에 **나머지 10% Fallback 경로의 효율**을 극대화하는 보완 전략으로 위치합니다.
