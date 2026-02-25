@@ -1,8 +1,5 @@
-# 📊 세미나 발표 화면 흐름 가이드 (Presentation Flow)
+# 📊 기술 공유 흐름 가이드 (Flow)
 
-> 본 문서는 별도의 PPT 슬라이드 없이 마크다운 문서 내용과 터미널 화면만으로 세미나를 진행하기 위한 화면 전환(비주얼) 흐름도입니다. 발표 시 이 순서대로 뷰어 화면을 띄워놓고 대본([seminar_speaker_script.md](seminar_speaker_script.md))과 매칭하여 진행합니다.
-
----
 
 ## [도입] Title & 배경 (Screen 1~3)
 
@@ -75,15 +72,15 @@
 ## [Live Demo] 방안 C 투스텝 RAG 액션 시연 (Screen 13)
 
 ### Screen 13: 라이브 데모 실행 화면 분할 영역
-*   **화면 분할 뷰어링**: 좌측 프레임 - 하단 **터미널 실행창** / 우측 프레임 - **[docs/05_seminar_materials/demo_scenario_guide.md](demo_scenario_guide.md)** 가이드 화면
-*   **실행 명령어 (좌측)**: `python docs/05_seminar_materials/demo/demo_cli_app.py`
+*   **화면 분할 뷰어링**: 좌측 프레임 - 하단 **터미널 실행창** / 우측 프레임 - **[docs/05_tech_sharing/demo_scenario_guide.md](demo_scenario_guide.md)** 가이드 화면
+*   **실행 명령어 (좌측)**: `python docs/05_tech_sharing/demo/demo_cli_app.py`
 *   **진행 포인트**: 우측의 [demo_scenario_guide.md](demo_scenario_guide.md)를 띄워 청중들이 데모 스텝(1단계 Vector 의도 추출 -> 2단계 Ontology 조건 매핑 -> 조립 및 완성) 진행 파트를 육안 활자로 직접 쫓아가도록 자연스럽게 시야 유도.
 
 ---
 
-## [마무리] Lesson Learned & QnA (Screen 14)
+## [마무리] Lesson Learned
 
-### Screen 14: 배운 점 핵심 요약 및 질의응답 (Takeaways)
+### Screen 14: 배운 점 핵심 요약
 *   **표시 화면**: 메인 화면 혹은 QnA 관련 마크다운 최하단
 *   **강조 포인트**:
     1. LLM은 메인 파이낸스 로직이 아닌 안전 장치(Fallback)용 유격수로 써라.
