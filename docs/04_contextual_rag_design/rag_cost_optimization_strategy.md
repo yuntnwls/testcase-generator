@@ -231,13 +231,10 @@
 
 ```mermaid
 graph LR
-    A["<b>방안 A</b><br/>현재 구현<br/>2,310K tok/100TC"] 
-    -->|"Phase 1<br/>3-Tier + Template DB 구축<br/><b>94% 절감</b>"| 
-    B["<b>방안 B</b><br/>03 설계 구현<br/>132K tok/100TC"]
-    
-    B -->|"Phase 2<br/>context_prefix + fuzzy filter<br/><b>추가 49% 절감</b>"| 
-    C["<b>방안 C</b><br/>Contextual RAG<br/>67K tok/100TC"]
+    A["방안 A<br/>현재 구현<br/>2,310K tok / 100TC"] -->|"Phase 1: 3-Tier + Template DB 구축<br/>94% 절감"| B["방안 B<br/>03 설계 구현<br/>132K tok / 100TC"]
+    B -->|"Phase 2: context_prefix + fuzzy filter<br/>추가 49% 절감"| C["방안 C<br/>Contextual RAG<br/>67K tok / 100TC"]
 ```
+
 
 ### Phase 1: 방안 B 구현 (가장 높은 ROI)
 
@@ -276,14 +273,14 @@ Phase 1 이후 운영 데이터를 바탕으로, Fallback 빈도와 비용을 �
 
 ```mermaid
 graph TD
-    A["현재 TC 처리량?"] -->|"월 ~50건 이하"| B["방안 A 유지 가능<br/>(비용 아직 경미)"]
-    A -->|"월 50~500건"| C["<b>방안 B 전환 강력 권장</b><br/>(94% 절감)"]
-    A -->|"월 500건 이상"| D["방안 B + C 동시 적용<br/>(97% 절감)"]
-    
+    A["현재 TC 처리량?"] -->|"월 50건 이하"| B["방안 A 유지 가능<br/>비용 아직 경미"]
+    A -->|"월 50~500건"| C["방안 B 전환 강력 권장<br/>94% 절감"]
+    A -->|"월 500건 이상"| D["방안 B + C 동시 적용<br/>97% 절감"]
+
     C --> E["시그널 DB 규모?"]
     E -->|"200개 미만"| F["Phase 1만으로 충분"]
     E -->|"200개 이상"| G["Phase 2 즉시 착수"]
-    
+
     D --> H["Phase 1+2+3 병행"]
 ```
 
