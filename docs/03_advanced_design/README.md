@@ -8,31 +8,46 @@
 
 ## 📂 문서 목록
 
-### 핵심 아키텍처
+### 1. 전략 및 청사진 (Strategy & Blueprint)
+시스템의 목표("No IR, No LLM") 및 전체 구조를 다루는 최상위 문서입니다.
 
 | 문서 | 한줄 요약 |
 | :--- | :--- |
-| [architecture_design.md](./architecture_design.md) | **전체 아키텍처 설계서 (핵심 문서)**. Vector DB 기반 Direct Synthesis 파이프라인 정의. Retriever → Extractor(3-Tier) → Assembler → Validator 구조. "No Intermediate Objects, Scale by Knowledge" 원칙 |
-| [tc_script_generation_strategy.md](./tc_script_generation_strategy.md) | TC 4대 컴포넌트(초기화·사전조건·시험방법·판정조건) 분석 및 전체 스크립트 생성 전략. 컬럼별 Vector DB 타입 필터링, 값 정규화 3단계 파이프라인(Spec Match → Alias → LLM) |
-| [execution_sequence.md](./execution_sequence.md) | 방안 B의 런타임 실행 시퀀스 다이어그램. TC Step 1건 처리 흐름: Cache → Retriever → Extractor Tier 1/2/3 → Assembler → Validator |
-| [implementation_spec.md](./implementation_spec.md) | 주요 모듈의 Python 클래스/함수 구현 명세. `TemplateRetriever`, `TierExtractor`, `OntologyAssembler`, `CodeValidator` 인터페이스 정의 |
-| [advanced_performance_and_fallback.md](./advanced_performance_and_fallback.md) | 성능 목표 및 Fallback 시나리오 설계. Tier 1→2→3 단계별 실패 처리, Template Rescue, Approval Queue 동작 |
+| [architecture_design.md](./architecture_design.md) | **(최상위 전략)** Vector DB 기반 Direct Synthesis 파이프라인(Retriever → Extractor → Assembler → Validator) 정의 및 설계 원칙 |
+| [tc_script_generation_strategy.md](./tc_script_generation_strategy.md) | **(전략)** TC 4대 컴포넌트별 생성 전략 및 3단계 값 정규화 파이프라인(Spec Match → Alias → LLM) 설계 |
 
-### 프롬프트 및 UI
+### 2. 핵심 런타임 모듈 (Core Runtime Modules)
+모듈별 인터페이스 및 핵심 인터랙션 로직입니다.
 
 | 문서 | 한줄 요약 |
 | :--- | :--- |
-| [prompt_engineering_guide.md](./prompt_engineering_guide.md) | LLM이 호출되는 4개 지점의 공식 프롬프트 템플릿. Extractor Tier 3(변수 추출), Ontology Router(은어 번역), Self-Correction(코드 교정), Template Rescue(패턴 추론) |
-| [ui_proposal.md](./ui_proposal.md) | No-Code Template Builder UI, Ontology 편집기, 실시간 변환 모니터링 화면 상세 제안. 와이어프레임 및 컴포넌트 설명 |
+| [implementation_spec.md](./implementation_spec.md) | **(인터페이스)** `TemplateRetriever`, `TierExtractor`, `OntologyAssembler` 등 핵심 모듈의 Python 클래스 및 함수 구현 명세 |
 
-### `db/` 서브폴더 — DB 스키마 및 예시 데이터
+### 3. 파이프라인 및 예외 처리 (Process & Ops)
+성능 목표 및 예외 상황(Fallback)에 대한 설계입니다.
+
+| 문서 | 한줄 요약 |
+| :--- | :--- |
+| [advanced_performance_and_fallback.md](./advanced_performance_and_fallback.md) | **(성능/예외)** Tier 1→2→3 단계별 실패 처리, Template Rescue 및 Approval Queue 동작 설계 |
+
+### 4. 구현 상세 (Implementation Details)
+실제 개발 및 프롬프트 튜닝 시 참고할 기술 명세입니다.
+
+| 문서 | 한줄 요약 |
+| :--- | :--- |
+| [execution_sequence.md](./execution_sequence.md) | **(흐름)** 방안 B의 런타임 실행 시퀀스 (Cache → Retriever → 3-Tier Extractor → Assembler → Validator) |
+| [prompt_engineering_guide.md](./prompt_engineering_guide.md) | **(프롬프트)** Extractor Tier 3, Ontology Router, Self-Correction, Rescue 지점의 공식 프롬프트 템플릿 |
+| [ui_proposal.md](./ui_proposal.md) | **(UI/UX)** No-Code Template Builder UI, Ontology 편집기 및 모니터링 화면 와이어프레임 |
+
+### 5. DB 설계 및 예시 데이터 (DB Design & Sample Data)
+시스템의 기반이 되는 데이터 스키마 및 샘플 데이터입니다.
 
 | 파일 | 한줄 요약 |
 | :--- | :--- |
-| [db/vector_db_schema.md](./db/vector_db_schema.md) | Vector DB 레코드 스키마 정의. 필드 구성(`id`, `type_source`, `regex_pattern`, `target_code` 등), 컬렉션 분리 전략, 검색 코드 예시 |
-| [db/ontology_db_schema.md](./db/ontology_db_schema.md) | Ontology 지식 그래프 스키마 정의. 시그널 노드 구조, 동의어(Alias) 매핑, 선행 조건(Pre-condition) 연결 |
-| [db/sample_simva_collection.json](./db/sample_simva_collection.json) | SIMVA 환경 Vector DB 샘플 레코드 (JSON). 실제 등록 가능한 템플릿 예시 |
-| [db/sample_ontology_graph.json](./db/sample_ontology_graph.json) | Ontology DB 샘플 그래프 데이터 (JSON). 시그널-차종-값 연결 관계 예시 |
+| [db/vector_db_schema.md](./db/vector_db_schema.md) | Vector DB 레코드 스키마(`id`, `regex_pattern`, `target_code` 등) 및 검색 쿼리 예시 |
+| [db/ontology_db_schema.md](./db/ontology_db_schema.md) | Ontology 지식 그래프 스키마, 동의어(Alias) 매핑 및 선행 조건 연결 설계 |
+| [db/sample_simva_collection.json](./db/sample_simva_collection.json) | SIMVA 환경 Vector DB 샘플 레코드 예시 (JSON) |
+| [db/sample_ontology_graph.json](./db/sample_ontology_graph.json) | Ontology DB 샘플 그래프 데이터 예시 (JSON) |
 
 ---
 

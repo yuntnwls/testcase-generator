@@ -53,45 +53,21 @@ graph TD
 
 | 다이어그램 노드 | 문서 섹션 | 컴포넌트 파일 |
 | :--- | :--- | :--- |
-| Pattern Cache | **§4** Pattern Cache Layer 설계 | `src/core/pattern_cache.py` |
+| Pattern Cache | §4 Pattern Cache Layer 설계 | `src/core/pattern_cache.py` |
 | Contextual Indexer (오프라인) | §2.1 | `src/db/context_indexer.py` |
 | Retriever Engine | §2.2 | `src/core/retriever.py` |
-| Assembler (Jinja2) | §2.3 | `src/core/assembler.py` |
-| Ontology Router (Fuzzy Filter) | §2.4 | `src/db/ontology_graph.py` |
-| Error Context Compressor | §2.5 | `src/core/validator.py` |
+| 3-Tier Extractor | **§2.3** → [extractor_design.md](extractor_design.md) | `src/core/extractor.py` |
+| Assembler (Jinja2) | §2.4 | `src/core/assembler.py` |
+| Ontology Router (Fuzzy Filter) | §2.5 | `src/db/ontology_graph.py` |
+| Error Context Compressor | §2.6 | `src/core/validator.py` |
 
 ### 2.1. Offline: Contextual Indexer 설계 (DB 구축 레이어)
 
 모든 검색의 정확도는 DB에 들어가는 데이터의 '품질'에 의해 결정됩니다. 단순 텍스트 임베딩을 넘어, **각 시그널과 템플릿의 문맥(Context)을 사전 생성하여 벡터화**합니다.
 
 *   **컴포넌트**: `src/db/context_indexer.py` (신규 생성)
-*   **동작 방식**: 
-    1.  DBC 파일이나 템플릿 정의 JSON을 읽어들입니다.
-    2.  각 템플릿/시그널에 대해 가장 저렴한 모델(gpt-4o-mini 등)을 사용하여 2~3문장의 요약(Context)을 생성합니다.
-    3.  `context_prefix` 필드에 요약을 저장하고, 이를 포함한 텍스트로 임베딩을 수행합니다.
 
-**Contextual Indexer 오프라인 배치 스크립트 예시**:
-```python
-def generate_context_prefix(template_def: dict, llm_client) -> str:
-    """오프라인에서 템플릿의 의미와 제약사항을 LLM으로 미리 요약"""
-    prompt = f"""
-    아래 자동차 제어 템플릿 데이터를 보고 3문장 이내로 요약해라.
-    1. 언제 이 액션을 쓰는가?
-    2. 연관된 ECU나 물리 파츠는 무엇인가?
-    [Data]: {template_def}
-    """
-    response = llm_client.invoke(prompt)
-    return response.content
-
-def build_contextual_index(source_jsons: list):
-    for item in source_jsons:
-        # LLM 호출은 인덱싱(초기화/업데이트) 시 1회만 발생 (런타임 비용 0)
-        item["context_prefix"] = generate_context_prefix(item)
-        
-        # 임베딩 대상 문자열 = Context + 실제 타겟 소스
-        item["vector_source"] = f"{item['context_prefix']}\n\n{item['vector_source']}"
-        db.insert(item)
-```
+> 오프라인 파이프라인의 전체 동작 흐름, `context_prefix` 생성 및 Vector DB/Ontology DB 갱신과 무효화 연동 과정은 [offline_pipeline_design.md](offline_pipeline_design.md) 참조.
 
 ### 2.2. Runtime: Retriever Engine 설계
 
@@ -120,7 +96,19 @@ def retrieve_templates(user_text: str, top_k=3, threshold=0.75):
     return valid_matches
 ```
 
-### 2.3. Runtime: Assembler (Jinja2) 설계
+### 2.3. Runtime: 3-Tier Extractor 설계
+
+Retriever가 검색한 템플릿의 `regex_pattern`과 `type_source`를 기반으로 사용자 입력에서 변수값(`signal`, `value` 등)을 추출하는 모듈입니다. 비용 최적화 및 정확도 향상을 위해 3단계(Regex -> Alignment -> LLM)로 폴백(Fallback) 구조를 가집니다.
+
+*   **컴포넌트**: `src/core/extractor.py` (신규 생성)
+*   **3단계 추출 프로세스**:
+    1.  **Tier 1 (Regex Named Group)**: 비용 0. 정규식 캡처 그룹을 통해 변수를 추출합니다.
+    2.  **Tier 2 (LCS 문자열 차분)**: 비용 0. 정규식 실패 시 LCS 기반 Sequence Alignment로 고정 텍스트를 제거하고 슬롯을 매핑합니다.
+    3.  **Tier 3 (SLM Fallback)**: 비용 발생. 위 2단계 실패 시 생성형 LLM을 호출하여 구문을 분석하고 남은 변수를 추출합니다. (호출 빈도 ~5% 미만)
+
+> 각 Tier별 실패 조건, LCS 알고리즘, META_CONTROL 재귀 추출 등의 상세 동작 설계는 [extractor_design.md](extractor_design.md) 참조.
+
+### 2.4. Runtime: Assembler (Jinja2) 설계
 
 Retriever에서 매칭된 템플릿과 Extractor(3-Tier)가 추출한 변수, Ontology Router가 확정한 시그널명을 받아 **최종 실행 코드를 조립**합니다. 코드 조립 엔진으로 **Jinja2 템플릿 렌더링**을 사용합니다.
 
@@ -129,11 +117,11 @@ Retriever에서 매칭된 템플릿과 Extractor(3-Tier)가 추출한 변수, On
     1. Vector DB의 `target_code` 필드(Jinja2 템플릿 문자열)를 가져옵니다.
     2. Ontology Router가 확정한 `ecu`, `signal`, `data_type` 등을 변수로 구성합니다.
     3. `jinja2.Environment.from_string(target_code).render(**vars)`로 최종 코드를 생성합니다.
-    4. META_CONTROL_*형(IF-ELSE, LOOP)의 경우 하위 Action을 재귀적으로 조립한 후 `| indent(4)` 필터로 들여쓰기를 처리합니다.
+    4. META_CONTROL_*형(IF-ELSE, LOOP)의 경우 하위 Action을 재귀적으로 조립한 후 `\| indent(4)` 필터로 들여쓰기를 처리합니다.
 
 > 상세 설계 및 타입별 예시는 [jinja_template_engine.md](../jinja_template_engine.md) 참조.
 
-### 2.4. Runtime: Ontology Router — Fuzzy Filtering 설계
+### 2.5. Runtime: Ontology Router — Fuzzy Filtering 설계
 
 Extractor가 추출한 자연어 시그널명(`"좌측 헤드램프"`)을 Ontology DB의 정확한 신호명(`Left_HeadLamp`)으로 매핑합니다. DB에 정확한 이름이 없을 경우 **TheFuzz(Levenshtein Distance 기반) 라이브러리로 전체 노드 중 Top-5 후보를 먼저 추린 뒤** 소수 후보만 LLM에 전달하여 토큰을 96% 절감합니다.
 
@@ -144,7 +132,7 @@ Extractor가 추출한 자연어 시그널명(`"좌측 헤드램프"`)을 Ontolo
 
 
 
-### 2.5. Runtime: Error Context Compressor 설계 (Self-Correction Loop)
+### 2.6. Runtime: Error Context Compressor 설계 (Self-Correction Loop)
 
 Validator 검증(ex: `ast.parse` 오류, 정의되지 않은 변수 참조 오류)에 실패하여 Self-Correction Loop를 가동해야 할 경우, 오류가 발생한 지점의 핵심 정보만 LLM에 넘깁니다.
 
@@ -154,22 +142,16 @@ Validator 검증(ex: `ast.parse` 오류, 정의되지 않은 변수 참조 오�
     2.  전체 코드 50줄을 보내는 대신, 에러 발생 위치 `[Line-3 : Line+3]` 영역 파씽.
     3.  에러 로그의 끝단(Exception Type과 Message)만 1줄로 요약.
 
-**Error Context Compressor 구현 예시**:
-```python
-def compress_error_context(code_str: str, error_line_num: int, error_msg: str) -> str:
-    lines = code_str.split('\n')
-    start_idx = max(0, error_line_num - 1 - 3)
-    end_idx = min(len(lines), error_line_num - 1 + 4)
-    
-    compressed = "[오류 발생 주변 코드 (±3줄)]\n"
-    for i in range(start_idx, end_idx):
-        marker = ">>>>> " if i == (error_line_num - 1) else "      "
-        compressed += f"{marker} L{i+1}: {lines[i]}\n"
-        
-    compressed += f"\n[핵심 에러 메시지]: {error_msg.split('\n')[-1]}"
-    return compressed
-```
-에러 발생 시 이 `compressed` 텍스트만 Prompt에 추가합니다.
+> Error Compressor 외에도 `ast.parse` 구조 및 시그널 매핑 검증, 최대 3회 재시도 루프 및 Cache 저장 흐름 설계는 [validator_design.md](validator_design.md) 참조.
+
+### 2.7. Runtime: Template Rescue Flow & UI 연동
+
+검색된 템플릿의 품질이 매우 낮거나(Score < 0.75), Self-Correction을 3회 이상 실패했을 때 시스템이 임의로 코드를 생성(환각)하지 않고 **LLM을 통해 초안(Draft)만 생성한 뒤 사용자 승인을 대기**하는 플로우입니다.
+
+*   **컴포넌트**: `src/core/retriever.py` (Rescue 라우팅), Admin UI
+*   **동작 방식**: LLM이 `type_source`와 `draft_template` 초안을 만들면, 사용자가 UI에서 이를 태깅하여 수락합니다. 이후 Offline Indexer가 백그라운드에서 Vector DB에 실시간 업데이트합니다.
+
+> Rescue Engine의 프롬프트 초안 생성, No-Code Builder UI와의 상세 연동 흐름, 그리고 이를 통한 '자가 성장 루프' 설계는 [rescue_flow_design.md](rescue_flow_design.md) 참조.
 
 ---
 

@@ -60,33 +60,50 @@ graph LR
 
 ---
 
-## 📂 문서 목록
-
-
-### 핵심 설계 문서
+### 1. 전략 및 청사진 (Strategy & Blueprint)
+시스템의 초기 목표(IR 기반 파이프라인) 및 전체 구조를 다루는 문서입니다.
 
 | 문서 | 한줄 요약 |
 | :--- | :--- |
-| [detailed_design.md](./detailed_design.md) | 전체 시스템 아키텍처 상세 설계서. TC Parser → IR Builder → RAG Engine → Mapper 파이프라인 정의. 입출력 계층, 어댑터 구조, 신호 레지스트리 포함 |
-| [sequence_diagram.md](./sequence_diagram.md) | 시스템 구성 요소 간의 런타임 상호작용을 시퀀스 다이어그램으로 표현. TC 파싱부터 코드 생성까지의 전체 실행 흐름 |
-| [db_design.md](./db_design.md) | Vector DB와 Ontology DB의 초기 스키마 정의. 컬렉션 구조, 메타데이터 필드, 검색 쿼리 패턴 |
-| [rag_db_schema_sample.md](./rag_db_schema_sample.md) | Vector DB 레코드 샘플 모음. ACTION / LOOP / IF-ELSE / PRECONDITION / JUDGMENT 타입별 실제 예시 데이터 |
-| [rag_mock_data_scenarios.md](./rag_mock_data_scenarios.md) | RAG 검색 동작 시나리오 목 데이터. 자연어 TC 입력 → DB 매칭 결과 → 코드 생성 전 과정의 예시 시나리오 |
-| [prompt_template_spec.md](./prompt_template_spec.md) | LLM에 전달하는 시스템 프롬프트 템플릿 명세. System Prompt 구조, CONTEXT 주입 규칙, Few-Shot 예시 형식 |
-| [ir_schema_spec.md](./ir_schema_spec.md) | Intermediate Representation(IR) 스키마 명세. 자연어 TC를 LLM이 JSON IR로 변환하는 중간 객체 구조 정의 |
-| [dir_and_config_spec.md](./dir_and_config_spec.md) | 프로젝트 디렉터리 구조 및 설정 파일(`config.yaml`) 명세. 환경변수, DB 경로, 모델 설정 파라미터 |
-| [implementation_plan.md](./implementation_plan.md) | 초기 개발 단계별 구현 계획. Phase 1~3 작업 항목 및 우선순위 |
-| [ui_proposal.md](./ui_proposal.md) | 관리자 UI 초안. Vector DB 시각화, 시그널 매핑 편집기, 템플릿 관리 화면 제안 |
+| [detailed_design.md](./detailed_design.md) | **(최상위 설계)** TC Parser → IR Builder → RAG Engine → Mapper 파이프라인 상세 정의 및 어댑터 구조 설계 |
+| [sequence_diagram.md](./sequence_diagram.md) | **(흐름)** 시스템 구성 요소 간의 런타임 상호작용 및 TC 파싱부터 코드 생성까지의 실행 흐름 |
+| [implementation_plan.md](./implementation_plan.md) | **(계획)** 초기 개발 단계별 구현 계획 및 Phase 1~3 작업 항목 세부사항 |
 
-### `strategy/` 서브폴더 — 심층 기술 검토
+### 2. 핵심 런타임 모듈 (Core Runtime Modules)
+자연어 TC를 Intermediate Representation(IR)으로 변환하고 프롬프트를 생성하는 핵심 모직입니다.
 
 | 문서 | 한줄 요약 |
 | :--- | :--- |
-| [Topic1_LLM_Self_Correction_Design.md](./strategy/Topic1_LLM_Self_Correction_Design.md) | LLM이 생성한 코드를 자동 검증하고 재시도하는 Self-Correction 루프 설계 |
-| [Topic2_Adapter_SDK_Design.md](./strategy/Topic2_Adapter_SDK_Design.md) | SIMVA / CAPL 등 타겟 환경별 어댑터 SDK 인터페이스 설계 |
-| [Topic3_Logging_Traceability_Design.md](./strategy/Topic3_Logging_Traceability_Design.md) | 변환 이력 추적 및 디버깅을 위한 로깅 전략 설계 |
-| [Topic4_Testing_Architecture_Design.md](./strategy/Topic4_Testing_Architecture_Design.md) | 시스템 자체 품질을 검증하기 위한 유닛/통합 테스트 구조 |
-| [Topic5_Smart_Adapter_LLM_Strategy.md](./strategy/Topic5_Smart_Adapter_LLM_Strategy.md) | 어댑터에 LLM을 결합하는 스마트 어댑터 전략. 동의어 처리, 값 정규화, LLM Fallback 설계 |
+| [ir_schema_spec.md](./ir_schema_spec.md) | **(규격)** Intermediate Representation(IR) JSON 객체 구조 및 스키마 명세 |
+| [prompt_template_spec.md](./prompt_template_spec.md) | **(프롬프트)** LLM 전달용 시스템 프롬프트 템플릿, CONTEXT 주입 규칙 및 Few-Shot 예시 |
+
+### 3. 파이프라인 및 예외 처리 (Process & Ops)
+오류 발생 시의 자동 교정 및 스마트 대응 전략입니다.
+
+| 문서 | 한줄 요약 |
+| :--- | :--- |
+| [strategy/Topic1_LLM_Self_Correction_Design.md](./strategy/Topic1_LLM_Self_Correction_Design.md) | **(예외)** 생성 코드 자동 검증 및 재시도를 위한 Self-Correction 루프 설계 |
+| [strategy/Topic5_Smart_Adapter_LLM_Strategy.md](./strategy/Topic5_Smart_Adapter_LLM_Strategy.md) | **(전략)** 동의어 처리, 값 정규화 등 LLM을 활용한 스마트 어댑터 대응 전략 |
+
+### 4. 구현 상세 (Implementation Details)
+프로젝트 환경 설정 및 보조 시스템 설계 문서입니다.
+
+| 문서 | 한줄 요약 |
+| :--- | :--- |
+| [dir_and_config_spec.md](./dir_and_config_spec.md) | **(설정)** 프로젝트 디렉터리 구조 및 `config.yaml` 설정 파일 명세 |
+| [ui_proposal.md](./ui_proposal.md) | **(UI/UX)** Vector DB 시각화, 시그널 매핑 편집기 및 관리 화면 제안서 |
+| [strategy/Topic2_Adapter_SDK_Design.md](./strategy/Topic2_Adapter_SDK_Design.md) | **(SDK)** SIMVA / CAPL 등 타겟 환경별 어댑터 인터페이스 설계 |
+| [strategy/Topic3_Logging_Traceability_Design.md](./strategy/Topic3_Logging_Traceability_Design.md) | **(로깅)** 변환 이력 추적 및 디버깅을 위한 로깅 전략 |
+| [strategy/Topic4_Testing_Architecture_Design.md](./strategy/Topic4_Testing_Architecture_Design.md) | **(테스트)** 시스템 품질 검증을 위한 유닛/통합 테스트 구조 설계 |
+
+### 5. DB 설계 및 예시 데이터 (DB Design & Sample Data)
+초기 시스템의 데이터 저장 구조 및 시나리오 데이터입니다.
+
+| 문서 | 한줄 요약 |
+| :--- | :--- |
+| [db_design.md](./db_design.md) | **(스키마)** Vector DB와 Ontology DB의 초기 스키마 및 검색 쿼리 패턴 정의 |
+| [rag_db_schema_sample.md](./rag_db_schema_sample.md) | **(샘플)** ACTION / LOOP / IF-ELSE 등 타입별 실제 Vector DB 예시 데이터 |
+| [rag_mock_data_scenarios.md](./rag_mock_data_scenarios.md) | **(시나리오)** 자연어 입력부터 코드 생성까지 전 과정의 목(Mock) 예시 시나리오 |
 
 ---
 

@@ -6,19 +6,42 @@
 
 ## 📂 문서 목록
 
-### 전략 및 아키텍처
+### 1. 전략 및 청사진 (Strategy & Blueprint)
+시스템의 목표, 비용 절감 수치 및 전체 구조를 다루는 최상위 문서입니다.
 
 | 문서 | 한줄 요약 |
 | :--- | :--- |
-| [rag_cost_optimization_strategy.md](./rag_cost_optimization_strategy.md) | **(핵심 비교 문서)** 방안 A·B·C 3가지 아키텍처의 LLM 호출 지점, Token 비용 정량 분석, 변환 정확도 비교, 단계적 전환 로드맵. TC 100건 기준 비용 시뮬레이션 포함 |
-| [architecture.md](./architecture.md) | 방안 C 전체 시스템 다이어그램 및 모듈별 설계 개요. 각 모듈의 역할과 상세 설계 문서 링크 포함 |
-| [ontology_router_design.md](./ontology_router_design.md) | Ontology Router의 Fuzzy Filtering 상세 설계. Levenshtein Distance 원리, TheFuzz 4가지 스코어링 비교, 구현 코드, 전체 흐름(Fuzzy→LLM→Jinja2) |
-| [pattern_cache_design.md](./pattern_cache_design.md) | Pattern Cache Layer 상세 설계. 정규화 키 전략, CacheEntry 구조, LRU 교체 정책, 무효화 전략, 자가 학습 루프 |
-| [execution_sequence.md](./execution_sequence.md) | 방안 C의 6가지 런타임 실행 시퀀스 다이어그램. Happy Path(LLM 0회), 재귀 메타-템플릿, Tier 3 SLM Fallback, Self-Correction+Error Compressor, Pattern Cache 히트, No-Code DB 등록 |
-| [prompt_engineering_guide.md](./prompt_engineering_guide.md) | LLM이 실제로 호출되는 4개 지점의 공식 프롬프트 명세. Fuzzy Top-5 사전 필터링(Ontology Router), ±3줄 에러 압축(Self-Correction), context_prefix 주입(Tier 3), 오프라인 인덱서 |
-| [jinja_template_engine.md](./jinja_template_engine.md) | Assembler의 코드 조립 엔진으로 Jinja2를 활용하는 설계. Python format()의 한계, 타입별 렌더링 예시(ACTION/WAIT/CHECK/LOOP/IF-ELSE), `\| indent` · `\| to_python_value` 커스텀 필터, 전체 Assembler 구현 코드 |
+| [rag_cost_optimization_strategy.md](./rag_cost_optimization_strategy.md) | **(최상위 전략)** 방안 A·B·C 비교 분석, Token 비용 시뮬레이션 및 단계적 로드맵 |
+| [architecture.md](./architecture.md) | **(전체 설계도)** 시스템 다이어그램, 모듈별 역할 정의 및 연동 개요 |
 
-### `db/` 서브폴더 — DB 설계 및 예시 데이터
+### 2. 핵심 런타임 모듈 (Core Runtime Modules)
+사용자 입력(TC)이 들어왔을 때 실시간으로 거치는 핵심 변환 로직들입니다.
+
+| 문서 | 한줄 요약 |
+| :--- | :--- |
+| [pattern_cache_design.md](./pattern_cache_design.md) | **(조회)** 정규화 키 기반 LRU 캐시, 무효화 전략 및 자가 학습 루프 설계 |
+| [extractor_design.md](./extractor_design.md) | **(추출)** 3-Tier(Regex → LCS → SLM) 변수 추출 로직 및 재귀 처리 |
+| [ontology_router_design.md](./ontology_router_design.md) | **(매핑)** Fuzzy Filter(TheFuzz) 기반 신호명 매핑 및 LLM 후보 선택 프로세스 |
+| [validator_design.md](./validator_design.md) | **(검증)** 2단계 검증(Syntax/Semantic) 및 Self-Correction 재시도 루프 |
+
+### 3. 파이프라인 및 예외 처리 (Process & Ops)
+데이터 구축 및 시스템이 해결 못하는 상황에 대한 대응 설계입니다.
+
+| 문서 | 한줄 요약 |
+| :--- | :--- |
+| [offline_pipeline_design.md](./offline_pipeline_design.md) | **(데이터)** Contextual Indexer 파이프라인 및 Ontology DB 구축 로직 |
+| [rescue_flow_design.md](./rescue_flow_design.md) | **(예외)** 검색 실패 시 Template Rescue Engine 및 No-Code UI 연동 설계 |
+
+### 4. 구현 상세 (Implementation Details)
+실제 개발 시 참고해야 할 기술적 명세서입니다.
+
+| 문서 | 한줄 요약 |
+| :--- | :--- |
+| [execution_sequence.md](./execution_sequence.md) | **(흐름)** 6가지 주요 시나리오별 시퀀스 다이어그램 (Happy Path, Fallback 등) |
+| [prompt_engineering_guide.md](./prompt_engineering_guide.md) | **(프롬프트)** 런타임/오프라인 각 지점에 사용되는 공식 프롬프트 명세 |
+| [jinja_template_engine.md](./jinja_template_engine.md) | **(엔진)** Jinja2 기반 코드 생성 로직, 커스텀 필터 및 타입별 렌더링 예시 |
+
+### 5. DB 설계 및 예시 데이터 (DB Design & Sample Data)
 
 | 파일 | 한줄 요약 |
 | :--- | :--- |
@@ -85,7 +108,7 @@ graph LR
 
 ---
 
-## � 방안 A·B·C 핵심 지표 비교
+## 🗺️ 방안 A·B·C 핵심 지표 비교
 
 | 지표 | 방안 A (현재) | 방안 B (03 설계) | 방안 C (본 폴더) |
 | :--- | :---: | :---: | :---: |
@@ -98,13 +121,3 @@ graph LR
 > 상세 비용·정확도 분석 → [rag_cost_optimization_strategy.md](./rag_cost_optimization_strategy.md) §3~8
 
 ---
-
-## 🗺️ 03 폴더와의 관계
-
-| 03 설계 요소 | 방안 C에서의 변화 |
-| :--- | :--- |
-| Vector DB 스키마 | `context_prefix` 필드 추가 → 검색 정확도 향상 |
-| Ontology Router | Fuzzy Top-5 사전 필터링 추가 → LLM 호출 시 토큰 62% 절감 |
-| Self-Correction | Error Compressor 추가 → 에러 컨텍스트 ±3줄만 전달, 67% 절감 |
-| Retriever | `score_threshold=0.75` 추가 → 노이즈 결과 차단 |
-| (신규) Pattern Cache | 반복 패턴 즉시 반환 → 검색 자체 생략, 비용 0 |
