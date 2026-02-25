@@ -140,7 +140,7 @@ LLM이 처리한 새 패턴(Alias, Template)을 승인 후 DB에 영구 추가�
 
 ---
 
-## � 설계 문서 구조
+## 🛠 설계 문서 구조
 
 | 폴더 | 내용 | 상태 |
 | :--- | :--- | :---: |
@@ -150,20 +150,3 @@ LLM이 처리한 새 패턴(Alias, Template)을 승인 후 DB에 영구 추가�
 | [docs/04_contextual_rag_design](./docs/04_contextual_rag_design/) | 방안 C — Contextual RAG 최종 설계 | 📝 설계 중 |
 
 ---
-
-## 📂 프로젝트 구조
-
-```
-TestscriptGenerator/
-├── data/               # 샘플 TC, Signal.cfg, RAG DB 소스 원천 데이터
-├── docs/               # 설계 문서 (위 표 참조)
-│   ├── 01_analysis/
-│   ├── 02_design/      # 방안 A 설계
-│   ├── 03_advanced_design/  # 방안 B 설계
-│   └── 04_contextual_rag_design/  # 방안 C 설계
-├── src/
-│   ├── core/           # LLM, RAG, Parser 핵심 엔진
-│   ├── adapters/       # 타겟별(SIMVA, CAPL) 코드 변환기
-│   └── ui/             # Streamlit 대시보드
-└── tests/              # 단위 및 통합 테스트
-```

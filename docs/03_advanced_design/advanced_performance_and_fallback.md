@@ -10,7 +10,7 @@
 
 LLM은 지능형 엔진에서 가장 강력하지만 동시에 가장 느리고 비싼 자원입니다. 이를 최소화하기 위한 3단계 레이어 설계를 제안합니다.
 
-#### 1.1.1 Layer 1: Local Template Cache (Zero-LLM)
+#### 1.1.1 Layer 1: Local Template Cache
 *   **원리**: 이전에 성공적으로 변환된 문장(Input)과 결과 코드(Output)의 쌍을 로컬 캐시에 저장합니다.
 *   **동작**: 동일한 자연어 문장이 들어올 경우, Vector DB 검색이나 LLM 호출 없이 캐시에서 즉시 코드를 리턴합니다. (Hit Ratio 30~50% 예상)
 

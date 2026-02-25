@@ -50,7 +50,7 @@ ChromaDB
 | `type` | Enum | Metadata | 템플릿 구조 유형 (`ACTION`, `META_CONTROL_IFELSE`, `META_CONTROL_LOOP`, `TYPE_INIT`, `TYPE_WAIT`, `TYPE_CHECK`) |
 | `regex_pattern` | String | Metadata | 변수 추출(Tier 1)용 Named Group 정규식 |
 | `variables` | JSON String | Metadata | 필요한 변수 이름 배열 (예: `["signal","value"]`, JSON 직렬화 저장) |
-| `target_code` | String | Metadata | 최종 조립될 코드 뼈대 (예: `simva.set_signal(signals.{ecu}.{signal}, "{value}")`) |
+| `target_code` | String | Metadata | 최종 조립될 **Jinja2 템플릿** 문자열 (예: `simva.set_signal(signals.{{ ecu }}.{{ signal }}, {{ value | to_python_value(data_type) }})`) |
 
 > [!NOTE]
 > ChromaDB의 `metadata`는 중첩 딕셔너리를 지원하지 않습니다. 배열 타입은 `JSON.dumps()`로 직렬화하여 String으로 저장하고, 조회 시 역직렬화합니다.
@@ -68,7 +68,7 @@ ChromaDB
   "type": "ACTION",
   "regex_pattern": "^.*?(?P<signal>[a-zA-Z가-힣0-9_\\s]+?)(?:을|를|은|는)?\\s+(?P<value>[a-zA-Z0-9가-힣_\\s\\.]+?)(?:으로|로|에)?\\s+(?:설정|세팅|변경|바꿔|켜|꺼).*$",
   "variables": "[\"signal\", \"value\"]",
-  "target_code": "simva.set_signal(signals.{ecu}.{signal}, \"{value}\")"
+  "target_code": "simva.set_signal(signals.{{ ecu }}.{{ signal }}, {{ value | to_python_value(data_type) }})"
 }
 ```
 
@@ -83,7 +83,7 @@ ChromaDB
   "type": "TYPE_WAIT",
   "regex_pattern": "^.*?(?P<duration>[0-9]+(?:\\.[0-9]+)?)\\s*초?\\s+(?:대기|기다|wait).*$",
   "variables": "[\"duration\"]",
-  "target_code": "simva.wait({duration})"
+  "target_code": "simva.wait({{ duration | float }})"
 }
 ```
 
@@ -98,7 +98,7 @@ ChromaDB
   "type": "TYPE_CHECK",
   "regex_pattern": "^.*?(?P<signal>[a-zA-Z가-힣0-9_\\s]+?)(?:이|가|은|는)?\\s+(?P<value>[a-zA-Z0-9가-힣_\\s\\.]+?)(?:이어야|여야|이|가)\\s+(?:한다|됩니다|됨).*$",
   "variables": "[\"signal\", \"value\"]",
-  "target_code": "result = simva.is_eq(signals.{ecu}.{signal}, \"{value}\")"
+  "target_code": "result = simva.is_eq(signals.{{ ecu }}.{{ signal }}, {{ value | to_python_value(data_type) }})"
 }
 ```
 
@@ -113,7 +113,7 @@ ChromaDB
   "type": "META_CONTROL_IFELSE",
   "regex_pattern": "^(?P<condition>.+?)(?:이?면|인\\s*경우)\\s+(?P<true_action>.+?)(?:한다)[\\.\\s]*(?:그렇지\\s*않으면)\\s+(?P<false_action>.+?)(?:한다)$",
   "variables": "[\"condition\", \"true_action\", \"false_action\"]",
-  "target_code": "if {condition}:\n    {true_action}\nelse:\n    {false_action}"
+  "target_code": "if {{ condition }}:\n{{ true_action | indent(4, first=True) }}\nelse:\n{{ false_action | indent(4, first=True) }}"
 }
 ```
 
@@ -128,7 +128,7 @@ ChromaDB
   "type": "META_CONTROL_LOOP",
   "regex_pattern": "^(?P<action>.+?)(?:\\s*동작을?)?\\s+(?P<count>[0-9]+)(?:번|회)\\s+반복.*$",
   "variables": "[\"count\", \"action\"]",
-  "target_code": "for i in range({count}):\n    {action}"
+  "target_code": "for i in range({{ count | int }}):\n{{ action | indent(4, first=True) }}"
 }
 ```
 
@@ -190,6 +190,8 @@ def retrieve_templates(user_text: str, collection: str = "simva_templates"):
     
     Returns:
         list[TemplateMatch]: 유사도 임계값 통과 템플릿 목록
+        ※ TemplateMatch.target_code는 Jinja2 템플릿 문자열입니다.
+           실제 렌더링(변수 치환)은 Assembler 단계에서 수행합니다.
     """
     # 1. 임베딩 모델로 입력 문장을 벡터화
     query_embedding = embedding_model.encode(user_text)
@@ -214,6 +216,7 @@ def retrieve_templates(user_text: str, collection: str = "simva_templates"):
                 type=raw_results["metadatas"][0][i]["type"],
                 regex_pattern=raw_results["metadatas"][0][i]["regex_pattern"],
                 variables=json.loads(raw_results["metadatas"][0][i]["variables"]),
+                # ↓ Jinja2 템플릿 문자열 그대로 전달 — Assembler가 렌더링 담당
                 target_code=raw_results["metadatas"][0][i]["target_code"]
             ))
     
@@ -229,13 +232,19 @@ def retrieve_templates(user_text: str, collection: str = "simva_templates"):
 
 ```
 Retriever 반환값 (TemplateMatch)
+        │  ※ target_code = Jinja2 템플릿 문자열 (아직 렌더링 전)
         │
-        ├─ type == "ACTION"             → Extractor로 직접 전달 (Tier 1 Regex 시도)
+        ├─ type == "ACTION"            → 3-Tier Extractor로 전달
+        │      → 변수 추출 후 Assembler가 Jinja2 렌더링
+        │        env.from_string(target_code).render(ecu=..., signal=..., value=..., data_type=...)
         │
-        ├─ type == "META_CONTROL_*"     → Extractor가 구조 변수(condition, action 등) 추출
-        │                                   → 추출된 변수들을 재귀적으로 다시 retrieve_templates() 호출
+        ├─ type == "META_CONTROL_*"    → Extractor가 구조 변수(condition, action 등) 추출
+        │      → 추출된 하위 변수들을 재귀적으로 retrieve_templates() 호출해 먼저 렌더링
+        │      → 완성된 코드 블록을 indent 필터로 들여쓰기 후 상위 Jinja2 템플릿에 주입
+        │        env.from_string(target_code).render(condition=..., true_action=rendered_code, ...)
         │
-        └─ type == "TYPE_CHECK"         → is_expected_result=True 컨텍스트 플래그 설정 후 처리
+        └─ type == "TYPE_CHECK"        → is_expected_result=True 컨텍스트 플래그 설정 후
+               Assembler가 check_type(eq/ge/keep)에 따라 Jinja2 조건 분기 렌더링
 ```
 
 ---

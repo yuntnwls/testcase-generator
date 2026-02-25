@@ -10,10 +10,13 @@
 
 | 문서 | 한줄 요약 |
 | :--- | :--- |
-| [rag_cost_optimization_strategy.md](./rag_cost_optimization_strategy.md) | **(핵심 비교 문서)** 방안 A·B·C 3가지 아키텍처의 LLM 호출 지점, Token 비용 정량 분석, 변환 정확도 비교, 단계별 전환 로드맵. TC 100건 기준 비용 시뮬레이션 포함 |
-| [architecture.md](./architecture.md) | 방안 C 전체 시스템 다이어그램 및 모듈별 설계. Offline Contextual Indexer, Retriever Score Filter, Fuzzy Ontology Router, Error Context Compressor, Pattern Cache Layer |
+| [rag_cost_optimization_strategy.md](./rag_cost_optimization_strategy.md) | **(핵심 비교 문서)** 방안 A·B·C 3가지 아키텍처의 LLM 호출 지점, Token 비용 정량 분석, 변환 정확도 비교, 단계적 전환 로드맵. TC 100건 기준 비용 시뮬레이션 포함 |
+| [architecture.md](./architecture.md) | 방안 C 전체 시스템 다이어그램 및 모듈별 설계 개요. 각 모듈의 역할과 상세 설계 문서 링크 포함 |
+| [ontology_router_design.md](./ontology_router_design.md) | Ontology Router의 Fuzzy Filtering 상세 설계. Levenshtein Distance 원리, TheFuzz 4가지 스코어링 비교, 구현 코드, 전체 흐름(Fuzzy→LLM→Jinja2) |
+| [pattern_cache_design.md](./pattern_cache_design.md) | Pattern Cache Layer 상세 설계. 정규화 키 전략, CacheEntry 구조, LRU 교체 정책, 무효화 전략, 자가 학습 루프 |
 | [execution_sequence.md](./execution_sequence.md) | 방안 C의 6가지 런타임 실행 시퀀스 다이어그램. Happy Path(LLM 0회), 재귀 메타-템플릿, Tier 3 SLM Fallback, Self-Correction+Error Compressor, Pattern Cache 히트, No-Code DB 등록 |
 | [prompt_engineering_guide.md](./prompt_engineering_guide.md) | LLM이 실제로 호출되는 4개 지점의 공식 프롬프트 명세. Fuzzy Top-5 사전 필터링(Ontology Router), ±3줄 에러 압축(Self-Correction), context_prefix 주입(Tier 3), 오프라인 인덱서 |
+| [jinja_template_engine.md](./jinja_template_engine.md) | Assembler의 코드 조립 엔진으로 Jinja2를 활용하는 설계. Python format()의 한계, 타입별 렌더링 예시(ACTION/WAIT/CHECK/LOOP/IF-ELSE), `\| indent` · `\| to_python_value` 커스텀 필터, 전체 Assembler 구현 코드 |
 
 ### `db/` 서브폴더 — DB 설계 및 예시 데이터
 

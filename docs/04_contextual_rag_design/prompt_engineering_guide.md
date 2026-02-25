@@ -153,7 +153,8 @@ AI가 생성했던 코드가 [에러 발생 위치 코드]에서 [에러 메시�
 ```
 
 > [!TIP]
-> `{compressed_error_context}`는 `src/core/validator.py`의 `compress_error_context()` 함수([01_architecture.md §2.4](./01_architecture.md) 참조)가 자동 생성합니다. 에러 발생 줄(Line Number)을 기준으로 앞뒤 3줄만 추출하여 ~150 tokens로 압축합니다.
+> `{compressed_error_context}`는 `src/core/validator.py`의 `compress_error_context()` 함수([architecture.md §2.5](./architecture.md) 참조)가 자동 생성합니다. 에러 발생 줄(Line Number)을 기준으로 앞뒤 3줄만 추출하여 ~150 tokens로 압축합니다.
+
 
 ---
 

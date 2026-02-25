@@ -12,7 +12,7 @@
             "vector_source": "차량 내 특정 ECU 신호의 상태값을 새로운 값으로 변경하는 할당 동작...\n\n{signal}를 {value}로 설정한다",
             "regex_pattern": "^.*?(?P<signal>[a-zA-Z가-힣0-9_\\s]+?)(?:을|를|은|는)?\\s+(?P<value>[a-zA-Z0-9가-힣_\\s\\.]+?)(?:으로|로|에)?\\s+(?:설정|세팅|변경|바꿔|켜|꺼|작동).*$",
             "variables": "[\"signal\", \"value\"]",
-            "target_code": "simva.set_signal(signals.{ecu}.{signal}, \"{value}\")"
+            "target_code": "simva.set_signal(signals.{{ ecu }}.{{ signal }}, {{ value | to_python_value(data_type) }})"
         },
         {
             "id": "action_wait_seconds",
@@ -22,7 +22,7 @@
             "vector_source": "설정된 시간만큼 테스트 실행을 일시 중지하는 대기 동작...\n\n{duration}초 대기한다",
             "regex_pattern": "^.*?(?P<duration>[0-9]+(?:\\.[0-9]+)?)\\s*(?:초|s|sec)?\\s*(?:대기|기다|wait|후|뒤).*$",
             "variables": "[\"duration\"]",
-            "target_code": "simva.wait({duration})"
+            "target_code": "simva.wait({{ duration | float }})"
         },
         {
             "id": "action_wait_milliseconds",
@@ -32,7 +32,7 @@
             "vector_source": "밀리초 단위의 짧은 대기를 수행하는 동작...\n\n{duration}ms 대기한다",
             "regex_pattern": "^.*?(?P<duration>[0-9]+(?:\\.[0-9]+)?)\\s*(?:ms|밀리초|밀리세컨드)\\s*(?:대기|기다|wait).*$",
             "variables": "[\"duration\"]",
-            "target_code": "simva.wait({duration} / 1000)"
+            "target_code": "simva.wait({{ duration | float }} / 1000)"
         },
         {
             "id": "check_signal_eq",
@@ -42,7 +42,7 @@
             "vector_source": "특정 시그널의 현재 값이 기대값과 일치하는지 확인하는 판정 동작...\n\n{signal}이 {value}이어야 한다",
             "regex_pattern": "^.*?(?P<signal>[a-zA-Z가-힣0-9_\\s]+?)(?:이|가|은|는)?\\s+(?P<value>[a-zA-Z0-9가-힣_\\s\\.]+?)(?:이어야|여야|이|가|으로)\\s*(?:한다|됩니다|됨|확인|검증).*$",
             "variables": "[\"signal\", \"value\"]",
-            "target_code": "result = simva.is_eq(signals.{ecu}.{signal}, \"{value}\")"
+            "target_code": "result = simva.is_eq(signals.{{ ecu }}.{{ signal }}, {{ value | to_python_value(data_type) }})"
         },
         {
             "id": "check_signal_range",
@@ -52,7 +52,7 @@
             "vector_source": "특정 시그널의 값이 범위 내에 있는지 확인하는 범위 판정 동작...\n\n{signal}이 {min}에서 {max} 사이이어야 한다",
             "regex_pattern": "^.*?(?P<signal>[a-zA-Z가-힣0-9_\\s]+?)(?:이|가)?\\s+(?P<min>[0-9.]+)\\s*(?:에서|~|이상)?\\s*(?P<max>[0-9.]+)\\s*(?:사이|이하|미만).*$",
             "variables": "[\"signal\", \"min\", \"max\"]",
-            "target_code": "result = simva.is_between(signals.{ecu}.{signal}, {min}, {max})"
+            "target_code": "result = simva.is_between(signals.{{ ecu }}.{{ signal }}, {{ min | float }}, {{ max | float }})"
         },
         {
             "id": "action_keep_signal",
@@ -62,7 +62,7 @@
             "vector_source": "특정 시그널이 목표 값으로 일정 시간 유지되는지 확인하며 대기하는 동작...\n\n{signal}이 {value} 상태로 {duration}초 유지된다",
             "regex_pattern": "^.*?(?P<signal>[a-zA-Z가-힣0-9_\\s]+?)(?:이|가)?\\s+(?P<value>[a-zA-Z0-9가-힣_\\s]+?)\\s*(?:상태로|으로|로)?\\s*(?P<duration>[0-9.]+)\\s*(?:초|s)\\s*(?:유지|keep|지속).*$",
             "variables": "[\"signal\", \"value\", \"duration\"]",
-            "target_code": "result = simva.keep_eq(signals.{ecu}.{signal}, \"{value}\", {duration})"
+            "target_code": "result = simva.keep_eq(signals.{{ ecu }}.{{ signal }}, {{ value | to_python_value(data_type) }}, {{ duration | float }})"
         },
         {
             "id": "action_init_scenario",
@@ -82,7 +82,7 @@
             "vector_source": "조건에 따라 두 가지 동작 중 하나를 선택 실행하는 분기 제어 구조...\n\n{condition}이면 {true_action}한다. 그렇지 않으면 {false_action}한다",
             "regex_pattern": "^(?P<condition>.+?)(?:이?면|인\\s*경우)\\s+(?P<true_action>.+?)(?:한다)[\\.\\s]*(?:그렇지\\s*않으면|else)\\s+(?P<false_action>.+?)(?:한다)$",
             "variables": "[\"condition\", \"true_action\", \"false_action\"]",
-            "target_code": "if {condition}:\n    {true_action}\nelse:\n    {false_action}"
+            "target_code": "if {{ condition }}:\n{{ true_action | indent(4, first=True) }}\nelse:\n{{ false_action | indent(4, first=True) }}"
         },
         {
             "id": "meta_condition_if_only",
@@ -92,7 +92,7 @@
             "vector_source": "조건이 참일 경우에만 특정 동작을 실행하는 단순 조건 분기 구조...\n\n{condition}이면 {true_action}한다",
             "regex_pattern": "^(?P<condition>.+?)(?:이?면|인\\s*경우)\\s+(?P<true_action>.+?)(?:한다)$",
             "variables": "[\"condition\", \"true_action\"]",
-            "target_code": "if {condition}:\n    {true_action}"
+            "target_code": "if {{ condition }}:\n{{ true_action | indent(4, first=True) }}"
         },
         {
             "id": "meta_control_loop",
@@ -102,7 +102,7 @@
             "vector_source": "지정된 횟수만큼 동일한 동작을 반복 실행하는 루프 제어 구조...\n\n{action}동작을 {count}번 반복한다",
             "regex_pattern": "^(?P<action>.+?)(?:\\s*동작을?)?\\s+(?P<count>[0-9]+)(?:번|회|times)\\s+반복.*$",
             "variables": "[\"count\", \"action\"]",
-            "target_code": "for i in range({count}):\n    {action}"
+            "target_code": "for i in range({{ count | int }}):\n{{ action | indent(4, first=True) }}"
         },
         {
             "id": "action_compare_expression",
@@ -112,7 +112,7 @@
             "vector_source": "두 시그널 값 또는 시그널과 상수를 비교하는 조건식 표현...\n\n{signal}이 {value} {op}이다",
             "regex_pattern": "^.*?(?P<signal>[a-zA-Z가-힣0-9_\\s]+?)(?:이|가)?\\s+(?P<value>[a-zA-Z0-9가-힣_\\s\\.]+?)\\s*(?P<op>이상|이하|초과|미만|같다|같지\\s*않다|equal|greater|less).*$",
             "variables": "[\"signal\", \"value\", \"op\"]",
-            "target_code": "signals.{ecu}.{signal} {op} {value}"
+            "target_code": "signals.{{ ecu }}.{{ signal }} {{ op }} {{ value | to_python_value(data_type) }}"
         }
     ]
 }
