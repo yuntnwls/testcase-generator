@@ -10,8 +10,8 @@
 
 | 문서 | 설명 |
 | :--- | :--- |
-| **[tech_sharing_flow.md](./tech_sharing_flow.md)** | 기술 공유 자료 |
-| **[demo_scenario_guide.md](./demo_scenario_guide.md)** | 기술 공유 중 시연 시나리오 및 주요 해설 포인트 가이드 |
+| **[tech_sharing_flow.md](./tech_sharing_flow.md)** | 기술 공유 흐름 가이드 |
+| **[demo_scenario_guide.md](./demo_scenario_guide.md)** | 기술 공유 중 시연 시나리오 및 주요 포인트 가이드 |
 | **[demo/demo_cli_app.py](./demo/demo_cli_app.py)** | **(Live 통합 데모)** 샘플 VectorDB(Chroma) 및 Ontology 검색 과정을 시각적으로 보여준 직후, 실제 LLM 엔진을 호출하여 최종 코드로 합성하는 End-to-End 시연 프로그램 |
 
 ---
