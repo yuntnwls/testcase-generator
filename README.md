@@ -142,11 +142,11 @@ LLM이 처리한 새 패턴(Alias, Template)을 승인 후 DB에 영구 추가�
 
 ## 🛠 설계 문서 구조
 
-| 폴더 | 내용 | 상태 |
-| :--- | :--- | :---: |
-| [docs/01_analysis](./docs/01_analysis/) | 자연어 TC 특성 분석, 요구사항 도출 | ✅ 완료 |
-| [docs/02_design](./docs/02_design/) | 방안 A — IR 기반 1세대 설계 | ✅ 완료 |
-| [docs/03_advanced_design](./docs/03_advanced_design/) | 방안 B — Direct Synthesis 고도화 설계 | ✅ 완료 |
-| [docs/04_contextual_rag_design](./docs/04_contextual_rag_design/) | 방안 C — Contextual RAG 최종 설계 | 📝 설계 중 |
+| 폴더 | 내용 |
+| :--- | :--- |
+| [docs/01_analysis](./docs/01_analysis/) | 자연어 TC 특성 분석, 요구사항 도출 |
+| [docs/02_design](./docs/02_design/) | 방안 A — IR 기반 1세대 설계 |
+| [docs/03_advanced_design](./docs/03_advanced_design/) | 방안 B — Direct Synthesis 고도화 설계 |
+| [docs/04_contextual_rag_design](./docs/04_contextual_rag_design/) | 방안 C — Contextual RAG 최종 설계 |
 
 ---

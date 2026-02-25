@@ -1,0 +1,26 @@
+{
+    "_comment": "Contextual RAG 데모 시연용 Vector DB (방안 C: Action 매핑 구조 적용)",
+    "collection": "simva_templates",
+    "records": [
+        {
+            "id": "action_set_signal",
+            "type": "ACTION",
+            "context_prefix": "차량 내 특정 ECU 신호의 상태값을 새로운 값으로 변경하는 할당 동작.",
+            "vector_source": "지정된 값을 설정한다, 변경한다, 제어한다, 켠다, 끈다, 작동시킨다.",
+            "regex_pattern": "(?P<signal>.+?)(?:을|를|은|는)?\\s+(?P<value>.+?)(?:으로|로)?\\s*(?:설정|제어|켜|꺼|작동)",
+            "variables": "[\"signal\", \"value\"]",
+            "target_code": "simva.set_signal(signals.{{ ecu }}.{{ signal }}, {{ value }})",
+            "description": "값 할당 액션 (set_signal)"
+        },
+        {
+            "id": "check_signal_eq",
+            "type": "TYPE_CHECK",
+            "context_prefix": "특정 시그널의 현재 값이 기대값과 일치하는지 확인하는 판정 동작.",
+            "vector_source": "현재 상태나 값을 확인한다, 측정한다, 검사한다, 가져온다, 일치 여부를 비교한다.",
+            "regex_pattern": "(?P<signal>.+?)(?:이|가|은|는)?\\s+(?P<value>.+?)(?:인지)?\\s*(?:확인|검사|이어야)",
+            "variables": "[\"signal\", \"value\"]",
+            "target_code": "result = simva.get_signal(signals.{{ ecu }}.{{ signal }})",
+            "description": "상태 확인 및 비교 액션 (get_signal)"
+        }
+    ]
+}

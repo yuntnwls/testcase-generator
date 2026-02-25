@@ -1,0 +1,76 @@
+{
+    "_comment": "Contextual RAG 데모 시연용 Ontology DB (방안 C: Signal 매핑용 지식 그래프)",
+    "nodes": [
+        {
+            "id": "Concept:Headlamp_Left",
+            "node_type": "concept",
+            "label": "좌측 헤드램프",
+            "synonyms": [
+                "좌측 전조등",
+                "운전석 전조등",
+                "좌측라이트",
+                "운전석 불"
+            ],
+            "description": "차량 좌측 전조등 상태. 하향등/상향등/소등으로 구분 제어됨."
+        },
+        {
+            "id": "Physical:BCM_Headlamp_Left",
+            "node_type": "physical",
+            "label": "BCM_Headlamp_Left",
+            "ecu": "BCM",
+            "signal_id": "Left_HeadLamp"
+        },
+        {
+            "id": "Concept:VehicleSpeed",
+            "node_type": "concept",
+            "label": "차량 속도",
+            "synonyms": [
+                "주행 속도",
+                "현재 속도",
+                "차속"
+            ],
+            "description": "차량의 현재 주행 속도. 안전 기능 등 다양한 제어 로직에서 참조됨."
+        },
+        {
+            "id": "Physical:Vehicle_Speed",
+            "node_type": "physical",
+            "label": "Vehicle_Speed",
+            "ecu": "Vehicle",
+            "signal_id": "Speed"
+        },
+        {
+            "id": "Constraint:IG_Required",
+            "node_type": "constraint",
+            "label": "IG ON 선행 조건",
+            "description": "이 시그널을 조작하기 전에 IG(Ignition) 또는 배터리 전원 공급 상태가 ON이어야 정상 작동합니다."
+        },
+        {
+            "id": "Constraint:Sensor_OK",
+            "node_type": "constraint",
+            "label": "센서 정상 상태 조건",
+            "description": "속도 측정 전, 스피드미터 센서 에러 상태가 정상(OK)인지 먼저 확인해야 합니다."
+        }
+    ],
+    "edges": [
+        {
+            "source": "Physical:BCM_Headlamp_Left",
+            "relation": "represents",
+            "target": "Concept:Headlamp_Left"
+        },
+        {
+            "source": "Physical:Vehicle_Speed",
+            "relation": "represents",
+            "target": "Concept:VehicleSpeed"
+        },
+        {
+            "source": "Concept:Headlamp_Left",
+            "relation": "constrained_by",
+            "target": "Constraint:IG_Required"
+        },
+        {
+            "source": "Concept:VehicleSpeed",
+            "relation": "constrained_by",
+            "target": "Constraint:Sensor_OK"
+        }
+    ]
+}
