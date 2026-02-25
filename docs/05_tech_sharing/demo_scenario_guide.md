@@ -41,24 +41,24 @@ Ontology 그래프 매핑 시, 단순한 단어 번역(Concept -> Physical Signa
 
 ### Step 1: 방안 C의 진수, "2-Step RAG 모델"의 시각적 증명
 1.  **입력**: `"좌측 전조등을 켜라"` 입력
-2.  **화면 연출 (1단계 - Vector DB의 Action 추출)**:
-    *   `[Vector DB 매칭 성공]` 로그와 함께 입력된 자연어가 `action_set_signal`이라는 '할당 동작'으로 추상화되는 연출을 강조합니다.
-3.  **화면 연출 (2단계 - Ontology 지식 그래프 탐색 및 Graph Hop)**:
+2.  **연출 (1단계 - Vector DB의 Action 추출)**:
+    *   `[Vector DB 매칭 성공]` 로그와 함께 입력된 자연어가 `action_set_signal`이라는 '할당 동작'으로 추상화되는 과정을 강조합니다.
+3.  **연출 (2단계 - Ontology 지식 그래프 탐색 및 Graph Hop)**:
     *   `[Ontology 매칭 성공]` 컨셉 노드 검색 및 실제 물리 시그널 매핑 과정을 보여줍니다.
     *   `[Graph Hop] 제약조건(Constraint) 노출` 파트를 지목하며, "이 시그널 조작 전 배터리 전원이 ON이어야 정상 작동합니다"라는 제약 사항이 자동으로 도출되는 점을 강조.
 
 ### Step 2: 3-Tier Extractor로 변수 추출 (결정론적 방어막 시연)
-1.  **화면 연출 (Tier-1, 2 Extractor 활성화 로그)**:
+1.  **연출 (Tier-1, 2 Extractor 활성화 로그)**:
     *   입력 문장에 포함된 파라미터(값)를 DB 정규식을 기반으로 안전한 값(예: `ON`)으로 매핑하는 로그를 보여줌.
 
 ### Step 3: LLM의 조립 과정 (Direct Synthesis) 체감
-1.  **화면 연출 (2단계 - 코드 합성)**:
+1.  **연출 (2단계 - 코드 합성)**:
     *   `🧠 [LLM ⇄ RAG] 코드 생성 중...` 애니메이션 전개
     *   최종 Python 코드 출력 (`simva.set_signal(...)` 등) 확인.
 
 ### Step 4: 병목을 파괴하는 Pattern Cache 히트 시연
 1.  **입력**: 위쪽 화살표(`↑`)를 눌러 동일한 문장 `"좌측 전조등을 켜라"` 재입력
-2.  **화면 연출 (Cache Hit!)**:
+2.  **연출 (Cache Hit!)**:
     *   `⚡ [Pattern Cache HIT!] -> LLM 연산 스킵 (0.001초 반환)` 메시지와 함께 기다림 없이 즉시 결과 반환.
 
 ---
