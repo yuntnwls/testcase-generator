@@ -75,8 +75,7 @@
 *   [docs/04_contextual_rag_design/rescue_flow_design.md](../04_contextual_rag_design/rescue_flow_design.md) Error Context Compressor 파트
 *   **Error Compressor 효과**: 수십~수백 줄의 Python 에러 Traceback 코드를 ast 모듈로 에러 지점 위아래 3줄로 핵심만 압축 (재진행 복구 비용 **90% 추가 절약**)
 
-### 12. 최종 아키텍처 성과 스탯
-*   결과 종합 테이블 / 비용 비교표 마크다운 위치 노출
+### 12. 최종 아키텍처 성과
 *   **최종 성과 (방안 C)**: 
     *   LLM 호출률: 100% -> **12% 감소**
     *   토큰 사용량: **97.1% 감소** (할루시네이션 사실상 제로 도달)
