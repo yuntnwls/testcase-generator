@@ -31,6 +31,7 @@
 | :--- | :--- |
 | [offline_pipeline_design.md](./offline_pipeline_design.md) | **(데이터)** Contextual Indexer 파이프라인 및 Ontology DB 구축 로직 |
 | [rescue_flow_design.md](./rescue_flow_design.md) | **(예외)** 검색 실패 시 Template Rescue Engine 및 No-Code UI 연동 설계 |
+| [vector_db_build_pipeline.md](./vector_db_build_pipeline.md) | **(DB 구축)** 기존 TC(TSV) + 스크립트(Python)를 Input으로 Vector DB를 자동 빌드하는 파이프라인 설계 및 예시 스크립트 |
 
 ### 4. 구현 상세 (Implementation Details)
 실제 개발 시 참고해야 할 기술적 명세서입니다.
